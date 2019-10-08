@@ -23,3 +23,4 @@
 
 void trace (int logLevel, const char *fmt, ...);
 
+const char *getLastCfgMgrErr(void);

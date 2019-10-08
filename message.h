@@ -18,6 +18,7 @@
 
 #include <mqueue.h>
 #include <parameters.h>
+#include <trace.h>
 
 #define MSG_DATA_LEN_MAX        4096
 
@@ -99,6 +100,12 @@ typedef struct
     time_t startTime;
     time_t endTime;
 }logLookUpCtrlInfo;
+
+typedef struct
+{
+    cfgMgrStatus status;
+    char errMessage[LOG_BUF_LEN_MAX + 1];
+}confirmResponse;
 
 typedef struct
 {

@@ -2,16 +2,10 @@ include ../config.mk
 LIB=-lrt -pthread libcgic.a
 SRCS=msg.c share.c
 OBJS=$(SRCS:.c=.o)
+CFLAGS=-g -Wall -O0
 
 
 all: libcgic.a cfgMgrCgi.cgi
-	#cp *.cgi $(CGI_BIN)
-
-#install: libcgic.a
-	#cp *.cgi ../../tftpboot/
-	#cp capture ../../tftpboot
-	#cp cgic.h /usr/local/include
-	#@echo libcgic.a is in /usr/local/lib. cgic.h is in /usr/local/include
 
 libcgic.a: cgic.o cgic.h
 	rm -f libcgic.a
@@ -20,11 +14,10 @@ libcgic.a: cgic.o cgic.h
 
 cgic.o:cgic.c cgic.h
 	$(CC) -c cgic.c
-#CfgMgr.o:CfgMgr.c
-#	$(CC) -c CfgMgr.c
 
 cfgMgrCgi.cgi: cfgMgrCgi.c libcgic.a 
-	$(CC) $(CFLAGS) -I$(INC) cfgMgrCgi.c -o cfgMgrCgi.cgi $(LIB)	
+	$(CC) $(CFLAGS) $(INC) cfgMgrCgi.c -o cfgMgrCgi.cgi $(LIB)	
+	cp cfgMgrCgi.cgi /home/chenxu/LOONGSON-2k1000/src/web/cgi-bin/
 
 clean:
 	rm -vf *.o

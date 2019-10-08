@@ -23,10 +23,11 @@
 #include <netdb.h>
 #include <sys/prctl.h>
 #include <cfgMgr.h>
-#include <linux/if.h> 
+#include <linux/if.h>  
 #include <linux/ethtool.h> 
 #include <linux/sockios.h>
 #include <net/route.h>
+#include <net/if_arp.h>
 #include <trace.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -46,13 +47,13 @@
 
 
 #define WEB_THREAD_NAME "CfgMgrWebThread"
-#define CONFIG_FILE_NAME "config.xml"
+#define CONFIG_FILE_NAME "/home/chenxu/LOONGSON-2k1000/src/CfgMgr/doc/config.xml"
 
 pthread_t webThreadId = -1;
 
 static param pa;
 
-static int macString2Hex (char *str, char (*mac)[6])
+static int macString2Hex (char *str, char *mac)
 {
     int i;
     int len;
@@ -62,19 +63,19 @@ static int macString2Hex (char *str, char (*mac)[6])
 	
 	for (i = 0; i < 6; i++)
 	{
-	    sscanf(&str[i * 2], "%02x", mac[i]);
+	    sscanf(&str[i * 2], "%02x", (unsigned int *)&mac[i]);
 	}
 
 	return 0;
 }
 
-static int macHex2String (char (*mac)[6], char *str)
+static int macHex2String (char *mac, char *str)
 {
     int i;
 
 	for (i = 0; i < 6; i++)
 	{
-	    snprintf(&str[i*2], "%02x", mac[i], 2);
+	    snprintf(&str[i*2], 3, "%02x", mac[i]);
 	}
 	str[i] = 0;
 
@@ -83,16 +84,15 @@ static int macHex2String (char (*mac)[6], char *str)
 
 static cfgMgrStatus paramLoad(param *p)
 {
-	int fd = -1;
 	int whitespace;
 	FILE *fp;
 	mxml_node_t *tree,
 		*Config,
-		*Lan1,Lan1_Auto,Lan1_IP,Lan1_Mask,Lan1_GateWay,Lan1_Mac,
-			Lan1_CaptureServiceStatus,Lan1_AutoUpLoadEnable,Lan1_AutoUpLoadPath,Lan1_NetFilterServiceStatus,	
-		*Lan2,Lan2_Auto,Lan2_IP,Lan2_Mask,Lan2_GateWay,Lan2_Mac,
-			Lan2_CaptureServiceStatus,Lan2_AutoUpLoadEnable,Lan2_AutoUpLoadPath,Lan2_NetFilterServiceStatus,
-		*User,Administrators,NomalUser,UserName,UserPws,
+		*Lan1,*Lan1_Auto,*Lan1_IP,*Lan1_Mask,*Lan1_GateWay,*Lan1_Mac,
+			*Lan1_CaptureServiceStatus,*Lan1_AutoUpLoadEnable,*Lan1_AutoUpLoadPath,*Lan1_NetFilterServiceStatus,	
+		*Lan2,*Lan2_Auto,*Lan2_IP,*Lan2_Mask,*Lan2_GateWay,*Lan2_Mac,
+			*Lan2_CaptureServiceStatus,*Lan2_AutoUpLoadEnable,*Lan2_AutoUpLoadPath,*Lan2_NetFilterServiceStatus,
+		*User,*Administrators,*NomalUser,*UserName,*UserPws,
 		*node;
 	char *attr_value;
 
@@ -116,7 +116,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan1_Auto);
 		node = mxmlGetLastChild(Lan1_Auto);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		if(strstr(attr_value,"true"))
 			p->lan1.net.isDhcp = TRUE;
@@ -128,7 +128,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan1_IP);
 		node = mxmlGetLastChild(Lan1_IP);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		inet_pton(AF_INET, attr_value, (void*)&p->lan1.net.ip);
         trace(DEBUG_INFO, "Lan1_IP 0x%08x\n", (int)p->lan1.net.ip);
@@ -137,7 +137,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan1_Mask);
 		node = mxmlGetLastChild(Lan1_Mask);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		inet_pton(AF_INET, attr_value, (void*)&p->lan1.net.mask);
         trace(DEBUG_INFO, "Lan1_Mask 0x%08x\n", (int)p->lan1.net.mask);
@@ -146,7 +146,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan1_GateWay);
 		node = mxmlGetLastChild(Lan1_GateWay);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		inet_pton(AF_INET, attr_value, (void*)&p->lan1.net.gateway);
         trace(DEBUG_INFO, "Lan1_GateWay 0x%08x\n", (int)p->lan1.net.gateway);
@@ -155,7 +155,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan1_Mac);
 		node = mxmlGetLastChild(Lan1_Mac);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		macString2Hex(attr_value, p->lan1.net.mac);
         trace(DEBUG_INFO, "Lan1_Mac %s\n", attr_value);
@@ -164,7 +164,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan1_CaptureServiceStatus);
 		node = mxmlGetLastChild(Lan1_CaptureServiceStatus);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		if(strstr(attr_value, "ON"))
 			p->lan1.capture.isCapture = TRUE;
@@ -176,7 +176,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan1_AutoUpLoadEnable);
 		node = mxmlGetLastChild(Lan1_AutoUpLoadEnable);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		if(strstr(attr_value, "Y"))
 			p->lan1.capture.isCapture = TRUE;
@@ -188,7 +188,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan1_AutoUpLoadPath);
 		node = mxmlGetLastChild(Lan1_AutoUpLoadPath);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		strncpy(p->lan1.capture.autoUpLoadPath, attr_value, sizeof(p->lan1.capture.autoUpLoadPath));
         trace(DEBUG_INFO, "Lan1_AutoUpLoadPath %s\n", p->lan1.capture.autoUpLoadPath);
@@ -197,7 +197,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan1_NetFilterServiceStatus);
 		node = mxmlGetLastChild(Lan1_NetFilterServiceStatus);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		if(strstr(attr_value, "ON"))
 			p->lan1.filter.isFilter = TRUE;
@@ -214,7 +214,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan2_Auto);
 		node = mxmlGetLastChild(Lan2_Auto);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		if(strstr(attr_value,"true"))
 			p->lan2.net.isDhcp = TRUE;
@@ -226,7 +226,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan2_IP);
 		node = mxmlGetLastChild(Lan2_IP);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		inet_pton(AF_INET, attr_value, (void*)&p->lan2.net.ip);
         trace(DEBUG_INFO, "Lan2_IP 0x%08x\n", (int)p->lan2.net.ip);
@@ -235,7 +235,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan2_Mask);
 		node = mxmlGetLastChild(Lan2_Mask);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		inet_pton(AF_INET, attr_value, (void*)&p->lan2.net.mask);
         trace(DEBUG_INFO, "Lan2_Mask 0x%08x\n", (int)p->lan2.net.mask);
@@ -244,7 +244,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan2_GateWay);
 		node = mxmlGetLastChild(Lan2_GateWay);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		inet_pton(AF_INET, attr_value, (void*)&p->lan2.net.gateway);
         trace(DEBUG_INFO, "Lan2_GateWay 0x%08x\n", (int)p->lan2.net.gateway);
@@ -253,7 +253,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan2_Mac);
 		node = mxmlGetLastChild(Lan2_Mac);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		macString2Hex(attr_value, p->lan2.net.mac);
         trace(DEBUG_INFO, "Lan2_Mac %s\n", attr_value);
@@ -262,7 +262,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan2_CaptureServiceStatus);
 		node = mxmlGetLastChild(Lan2_CaptureServiceStatus);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		if(strstr(attr_value, "ON"))
 			p->lan2.capture.isCapture = TRUE;
@@ -274,7 +274,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan2_AutoUpLoadEnable);
 		node = mxmlGetLastChild(Lan2_AutoUpLoadEnable);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		if(strstr(attr_value, "Y"))
 			p->lan2.capture.isCapture = TRUE;
@@ -286,7 +286,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan2_AutoUpLoadPath);
 		node = mxmlGetLastChild(Lan2_AutoUpLoadPath);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		strncpy(p->lan2.capture.autoUpLoadPath, attr_value, sizeof(p->lan2.capture.autoUpLoadPath));
         trace(DEBUG_INFO, "Lan2_AutoUpLoadPath %s\n", p->lan2.capture.autoUpLoadPath);
@@ -295,7 +295,7 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(Lan2_NetFilterServiceStatus);
 		node = mxmlGetLastChild(Lan2_NetFilterServiceStatus);
 		assert(node);
-		attr_value = mxmlGetText(node, &whitespace);
+		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		if(strstr(attr_value, "ON"))
 			p->lan2.filter.isFilter = TRUE;
@@ -314,7 +314,7 @@ static cfgMgrStatus paramLoad(param *p)
 			assert(UserName);
 			node = mxmlGetLastChild(UserName);
 			assert(node);
-			attr_value = mxmlGetText(node, &whitespace);
+			attr_value = (char * )mxmlGetText(node, &whitespace);
 			assert(attr_value);
 			strncpy(p->users[0].userName, attr_value, USR_KEY_LNE_MAX + 1);
 	        trace(DEBUG_INFO, "Administrators UserName %s\n", p->users[0].userName);
@@ -323,7 +323,7 @@ static cfgMgrStatus paramLoad(param *p)
 			assert(UserPws);
 			node = mxmlGetLastChild(UserPws);
 			assert(node);
-			attr_value = mxmlGetText(node, &whitespace);
+			attr_value = (char * )mxmlGetText(node, &whitespace);
 			assert(attr_value);
 			strncpy(p->users[0].passwd, attr_value, USR_KEY_LNE_MAX + 1);
 	        trace(DEBUG_INFO, "Administrators UserPws %s\n", p->users[0].passwd);	    
@@ -335,7 +335,7 @@ static cfgMgrStatus paramLoad(param *p)
 			assert(UserName);
 			node = mxmlGetLastChild(UserName);
 			assert(node);
-			attr_value = mxmlGetText(node, &whitespace);
+			attr_value = (char * )mxmlGetText(node, &whitespace);
 			assert(attr_value);
 			strncpy(p->users[1].userName, attr_value, USR_KEY_LNE_MAX + 1);
 	        trace(DEBUG_INFO, "NomalUser UserName %s\n", p->users[1].userName);
@@ -344,7 +344,7 @@ static cfgMgrStatus paramLoad(param *p)
 			assert(UserPws);
 			node = mxmlGetLastChild(UserPws);
 			assert(node);
-			attr_value = mxmlGetText(node, &whitespace);
+			attr_value = (char * )mxmlGetText(node, &whitespace);
 			assert(attr_value);
 			strncpy(p->users[1].passwd, attr_value, USR_KEY_LNE_MAX + 1);
 	        trace(DEBUG_INFO, "NomalUser UserPws %s\n", p->users[1].passwd);
@@ -357,21 +357,16 @@ static cfgMgrStatus paramLoad(param *p)
 static cfgMgrStatus paramSave (param *p)
 {
 	cfgMgrStatus ret = CFGMGR_ERR;
-	char filename[100];
-	char filename1[100];
 	char buffer[100] = {0};
-	int 		i;
-	int 		 fd = -1;
 	FILE		*fp;
 	mxml_node_t *tree, 
 		*Config,
-		*Lan1,Lan1_Auto,Lan1_IP,Lan1_Mask,Lan1_GateWay,Lan1_Mac,
-		    Lan1_CaptureServiceStatus,Lan1_AutoUpLoadEnable,Lan1_AutoUpLoadPath,Lan1_NetFilterServiceStatus,	
-		*Lan2,Lan2_Auto,Lan2_IP,Lan2_Mask,Lan2_GateWay,Lan2_Mac,
-		    Lan2_CaptureServiceStatus,Lan2_AutoUpLoadEnable,Lan2_AutoUpLoadPath,Lan2_NetFilterServiceStatus,	
-		*User,Administrators,NomalUser,UserName,UserPws,
+		*Lan1,*Lan1_Auto,*Lan1_IP,*Lan1_Mask,*Lan1_GateWay,*Lan1_Mac,
+		    *Lan1_CaptureServiceStatus,*Lan1_AutoUpLoadEnable,*Lan1_AutoUpLoadPath,*Lan1_NetFilterServiceStatus,	
+		*Lan2,*Lan2_Auto,*Lan2_IP,*Lan2_Mask,*Lan2_GateWay,*Lan2_Mac,
+		    *Lan2_CaptureServiceStatus,*Lan2_AutoUpLoadEnable,*Lan2_AutoUpLoadPath,*Lan2_NetFilterServiceStatus,	
+		*User,*Administrators,*NomalUser,*UserName,*UserPws,
 		*node;
-	char *attr_value;
 
 	tree = mxmlNewXML("1.0");
 	assert(tree);
@@ -816,9 +811,9 @@ static cfgMgrStatus lanTest (netParam *net, int netNumber)
 
 	/** net parameter set bak */
     if (netNumber == 1)
-        netOrigin = &pa->lan1.net;
+        netOrigin = &pa.lan1.net;
     else
-        netOrigin = &pa->lan2.net;
+        netOrigin = &pa.lan2.net;
     if(CFGMGR_OK != (status = setNetParameters(netOrigin, netNumber)))
     {
         trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!\n", netNumber);
@@ -838,8 +833,22 @@ static cfgMgrStatus doNetCapture(captureParam *capture, int netNumber)
     return CFGMGR_NOT_SUPPORT;
 }
 
+static void genConfirmMsg(cfgMgrStatus status, msg *m)
+{
+    confirmResponse resp;
+    
+    m->type = MSGTYPE_COMFIRM;
+    resp.status = status;
+    if(status != CFGMGR_OK)
+        strncpy(&resp.errMessage[0], getLastCfgMgrErr(), LOG_BUF_LEN_MAX);
+    else
+        resp.errMessage[0] = 0;
 
-void webProcess (void)
+    memcpy(m->data, (char*)&resp, sizeof(confirmResponse));
+}
+
+
+static void webProcess (void)
 {
     int len;
     msgID mId;
@@ -848,12 +857,13 @@ void webProcess (void)
     int netNumber;
     netParam *net;
     captureParam *capture;
-    filterParam *filter;
+//    filterParam *filter;
     
     /** set process name */
     prctl(PR_SET_NAME, WEB_THREAD_NAME);
 
     /** open message */
+    mq_unlink(CGI_CFGMGR_MSG_NAME);
     if((msgID)-1 == (mId = msgOpen(CGI_CFGMGR_MSG_NAME)))
     {
         trace(DEBUG_ERR, "msgOpen %s error !!!\n", CGI_CFGMGR_MSG_NAME);
@@ -861,44 +871,46 @@ void webProcess (void)
     }
 
     /** load parameters */
-    if(CFGMGR_OK != (status = paramLoad(&pa))
+    if(CFGMGR_OK != (status = paramLoad(&pa)))
     {
         trace(DEBUG_ERR, "paramLoad failed(%d)\n", (int)status);
         goto webProcessExit;
     }
     /** set net parameters */
-    for(netNumber = 1; netNumber <= 2; netNumber++)
-    {
-        if (netNumber == 1)
-            net = &pa.lan1.net;
-        else
-            net = &pa.lan2.net;
-        if(CFGMGR_OK != (status = setNetParameters(net, netNumber)))
-        {
-            trace(DEBUG_ERR, "webProcess setNetParameters net%d failed!!!\n", netNumber);
-            goto webProcessExit;
-        }
-    }
+//    for(netNumber = 1; netNumber <= 2; netNumber++)
+//    {
+//        if (netNumber == 1)
+//            net = &pa.lan1.net;
+//        else
+//            net = &pa.lan2.net;
+//        if(CFGMGR_OK != (status = setNetParameters(net, netNumber)))
+//        {
+//            trace(DEBUG_ERR, "webProcess setNetParameters net%d failed!!!\n", netNumber);
+//            goto webProcessExit;
+//        }
+//    }
 
     while(1)
     {
-        if((len = msgRecv(mId, &m)) == -1)
+        if((len = msgRecv(mId, &m)) <= 0)
         {
             trace(DEBUG_ERR, "msgRecv %s error !!!\n", CGI_CFGMGR_MSG_NAME);
             break;
         }
+
+        trace(DEBUG_INFO, "msgRecv a message, type %d .\n", m.type);
 
         switch(m.type)
         {
             case MSGTYPE_LAN1TEST:
                 status = lanTest((netParam *)m.data, 1);
                 m.type = MSGTYPE_COMFIRM;
-                *(cfgMgrStatus*)m.data = status;
+//                *(cfgMgrStatus*)m.data = status;
                 break;
             case MSGTYPE_LAN2TEST:
                 status = lanTest((netParam *)m.data, 1);
                 m.type = MSGTYPE_COMFIRM;
-                *(cfgMgrStatus*)m.data = status;
+//                *(cfgMgrStatus*)m.data = status;
                 break;
             case MSGTYPE_NETCONFIGSAVE:                
                 do
@@ -909,18 +921,18 @@ void webProcess (void)
                         trace(DEBUG_ERR, "net 1 setNetParameters failed.\n");
                         break;
                     }
-                    memcpy (&pa->lan1.net, net, sizeof(netParam));
+                    memcpy (&pa.lan1.net, net, sizeof(netParam));
                     net++;
                     if(CFGMGR_OK != (status = setNetParameters(net, 2)))
                     {
                         trace(DEBUG_ERR, "net 2 setNetParameters failed.\n");
                         break;
                     }
-                    memcpy (&pa->lan2.net, net, sizeof(netParam));
+                    memcpy (&pa.lan2.net, net, sizeof(netParam));
                     status = paramSave(&pa);
                 }while(0);
                 m.type = MSGTYPE_COMFIRM;
-                *(cfgMgrStatus*)m.data = status;
+//                *(cfgMgrStatus*)m.data = status;
                 break;
             case MSGTYPE_NETCAPTURE:                
                 do
@@ -943,14 +955,17 @@ void webProcess (void)
                 }
                 while(0);
                 m.type = MSGTYPE_COMFIRM;
-                *(cfgMgrStatus*)m.data = status;
+//                *(cfgMgrStatus*)m.data = status;
                 break;
             default:
+                trace(DEBUG_ERR, "Operation not support!!!\n");
                 status = CFGMGR_NOT_SUPPORT;
                 m.type = MSGTYPE_COMFIRM;
-                *(cfgMgrStatus*)m.data = status;
+//                *(cfgMgrStatus*)m.data = status;
                 break;
         }
+
+        genConfirmMsg(status, &m);
 
         if(-1 == msgSend(mId, &m))
         {

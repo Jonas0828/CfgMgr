@@ -15,7 +15,6 @@
   */
 
 #include <stdio.h>
-#include <../message.c>
 #include "cgic.h"
 #include <string.h>
 #include <stdlib.h>
@@ -29,6 +28,8 @@
 #include <message.h>
 #include <time.h>
 #include <cfgMgrCgi.h>
+#include <../message.c>
+
 
 
 #define stringLenZeroChkReturn(str)\
@@ -486,6 +487,32 @@ static formMethod *formMethodLookUp (char *formName)
     return NULL;
 }
 
+static void confirm2json (msg *m)
+{
+    confirmResponse *cfResp = (confirmResponse *)m->data;
+
+    cgiHeaderContentType("text/html");
+    
+    fprintf(cgiOut, "{\r\n");
+    fprintf(cgiOut, "\"status\":%d\r\n", cfResp->status);
+    fprintf(cgiOut, "\"message\":%s", cfResp->errMessage);
+    fprintf(cgiOut, "}");
+}
+
+static void msg2json(msg *m)
+{
+    
+
+    switch(m->type)
+    {
+        case MSGTYPE_COMFIRM:
+            confirm2json(m);
+            break;
+        default:
+            break;
+    }
+}
+
 int cgiMain()
 {
     int                ret = 0;
@@ -494,7 +521,7 @@ int cgiMain()
     formMethod         *fmMethod;
     char formName      [FORM_ELEMENT_STRING_LEN_MAX] = {0};
     
-	cgiFormString("FormName", formName, FORM_ELEMENT_STRING_LEN_MAX);
+	cgiFormString("FunctionName", formName, FORM_ELEMENT_STRING_LEN_MAX);
 
     if (!strlen(formName))
     {
@@ -532,24 +559,14 @@ int cgiMain()
         goto closeMsg;
     }
 
-    if(0 != msgRecv(mId, &m))
+    if(0 >= msgRecv(mId, &m))
     {
         CGIDEBUG("msgRecv failed !!!\n");
         ret = -1;
         goto closeMsg;
     }
-    else
-    {
-        cfgMgrStatus *status = (cfgMgrStatus *)m.data;
-        
-        if ((m.type != MSGTYPE_COMFIRM)
-            || ((*status) != CFGMGR_OK))
-        {
-            CGIDEBUG("cfgMgr error (%d) !!!\n", *status);
-            ret = -1;
-            goto closeMsg;
-        }
-    }
+
+    msg2json(&m);
 
 closeMsg:
     msgClose(mId);

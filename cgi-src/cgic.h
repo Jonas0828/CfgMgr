@@ -13,7 +13,7 @@
 #include <assert.h>
 
 
-//#define CGICDEBUG
+#define CGICDEBUG
 #ifdef CGICDEBUG
 #define CGICDEBUGSTART \
 	{ \
@@ -26,9 +26,12 @@
 
 #define CGICASSERT(a)        assert(a)
 #define CGIDEBUG(fmt, ...)\
-CGICDEBUGSTART\
-fprintf(dout, fmt, ##__VA_ARGS__);\
-CGICDEBUGEND   
+		{ \
+			FILE *dout; \
+			dout = fopen("/home/boutell/public_html/debug", "a");\
+			fprintf(dout, fmt, ##__VA_ARGS__);\
+			fclose(dout); \
+		}
 
 #else /* CGICDEBUG */
 #define CGICDEBUGSTART
