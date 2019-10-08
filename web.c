@@ -835,16 +835,16 @@ static cfgMgrStatus doNetCapture(captureParam *capture, int netNumber)
 
 static void genConfirmMsg(cfgMgrStatus status, msg *m)
 {
-    confirmResponse resp;
+    confirmResponse *resp = (confirmResponse *)m->data;
     
     m->type = MSGTYPE_COMFIRM;
-    resp.status = status;
+    resp->status = status;
     if(status != CFGMGR_OK)
-        strncpy(&resp.errMessage[0], getLastCfgMgrErr(), LOG_BUF_LEN_MAX);
+        strncpy(&resp->errMessage[0], getLastCfgMgrErr(), LOG_BUF_LEN_MAX);
     else
-        resp.errMessage[0] = 0;
+        resp->errMessage[0] = 0;
 
-    memcpy(m->data, (char*)&resp, sizeof(confirmResponse));
+//    memcpy(m->data, (char*)&resp, sizeof(confirmResponse));
 }
 
 
