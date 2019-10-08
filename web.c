@@ -818,7 +818,7 @@ static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
     if(CFGMGR_OK != (status = setNetParameters(net, netNumber)))
     {
         trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!\n", netNumber);
-        goto lanTestExit;
+        goto doLanTestExit;
     }
     
     
@@ -833,7 +833,7 @@ static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
     if(CFGMGR_OK != (status = setNetParameters(netOrigin, netNumber)))
     {
         trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!\n", netNumber);
-        goto lanTestExit;
+        goto doLanTestExit;
     }
     
     trace(DEBUG_INFO, "Lan %d test OK\n", netNumber);
