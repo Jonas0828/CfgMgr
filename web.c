@@ -793,16 +793,32 @@ ether_etoa(const unsigned char *e, char *a)
     return a;
 }
 
-static cfgMgrStatus lanTest (netParam *net, int netNumber)
+static void genConfirmMsg(cfgMgrStatus status, msg *m)
 {
-    cfgMgrStatus status;
+    confirmResponse *resp = (confirmResponse *)m->data;
+    
+    m->type = MSGTYPE_COMFIRM;
+    resp->status = status;
+    if(status != CFGMGR_OK)
+        strncpy(&resp->errMessage[0], getLastCfgMgrErr(), LOG_BUF_LEN_MAX);
+    else
+        resp->errMessage[0] = 0;
+}
+
+
+static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
+{
+    netParam *net = (netParam *)in->data; 
+    cfgMgrStatus status = CFGMGR_OK;
     netParam *netOrigin;
+
+    trace(DEBUG_INFO, "Lan %d test start\n", netNumber);
 
     /** set ip */
     if(CFGMGR_OK != (status = setNetParameters(net, netNumber)))
     {
         trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!\n", netNumber);
-        return status;
+        goto lanTestExit;
     }
     
     
@@ -817,34 +833,144 @@ static cfgMgrStatus lanTest (netParam *net, int netNumber)
     if(CFGMGR_OK != (status = setNetParameters(netOrigin, netNumber)))
     {
         trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!\n", netNumber);
-        return status;
+        goto lanTestExit;
     }
     
-    if (status == CFGMGR_OK)
-        trace(DEBUG_INFO, "Lan %d test OK\n", netNumber);
-    else
-        trace(DEBUG_ERR, "Lan %d test ERROR(%d)\n", netNumber, status);
+    trace(DEBUG_INFO, "Lan %d test OK\n", netNumber);
     
-    return CFGMGR_OK;
+doLanTestExit:
+
+    genConfirmMsg(status, out);
+    
+    return status;
 }
 
-static cfgMgrStatus doNetCapture(captureParam *capture, int netNumber)
+static cfgMgrStatus doNetConfigSave (msg* in, msg *out)
 {
+    netParam *net = (netParam *)in->data; 
+    cfgMgrStatus status = CFGMGR_OK;
+
+    trace(DEBUG_INFO, "Net config start\n");
+
+    if(CFGMGR_OK != (status = setNetParameters(net, 1)))
+    {
+        trace(DEBUG_ERR, "net 1 setNetParameters failed.\n");
+        goto doNetConfigSaveExit;
+    }
+    
+    memcpy (&pa.lan1.net, net, sizeof(netParam));
+
+    net++;    
+    if(CFGMGR_OK != (status = setNetParameters(net, 2)))
+    {
+        trace(DEBUG_ERR, "net 2 setNetParameters failed.\n");
+        goto doNetConfigSaveExit;
+    }
+    
+    memcpy (&pa.lan2.net, net, sizeof(netParam));
+
+    if(CFGMGR_OK != (status = paramSave(&pa)))
+    {
+        trace(DEBUG_ERR, "paramSave failed.\n");
+        goto doNetConfigSaveExit;
+    }
+    
+    trace(DEBUG_INFO, "Net config succ\n");
+    
+doNetConfigSaveExit:
+
+    genConfirmMsg(status, out);
+    
+    return status;
+}
+
+
+static cfgMgrStatus netCapture(captureParam *capture, int netNumber)
+{
+    //TODO
     return CFGMGR_NOT_SUPPORT;
 }
 
-static void genConfirmMsg(cfgMgrStatus status, msg *m)
+static cfgMgrStatus doNetCapture(msg *in, msg *out)
 {
-    confirmResponse *resp = (confirmResponse *)m->data;
-    
-    m->type = MSGTYPE_COMFIRM;
-    resp->status = status;
-    if(status != CFGMGR_OK)
-        strncpy(&resp->errMessage[0], getLastCfgMgrErr(), LOG_BUF_LEN_MAX);
-    else
-        resp->errMessage[0] = 0;
+    cfgMgrStatus status = CFGMGR_OK;
+    captureParam *capture = (captureParam *)in->data;
 
-//    memcpy(m->data, (char*)&resp, sizeof(confirmResponse));
+    trace(DEBUG_INFO, "Net Capture start\n");
+
+    if(CFGMGR_OK != (status = netCapture(capture, 1)))
+    {
+        trace(DEBUG_ERR, "net 1 netCapture failed.\n");
+        goto doNetCaptureExit;
+    }
+    
+    memcpy(&pa.lan1.capture, capture, sizeof(captureParam));
+
+    capture++;
+    if(CFGMGR_OK != (status = netCapture(capture, 2)))
+    {
+        trace(DEBUG_ERR, "net 2 netCapture failed.\n");
+        goto doNetCaptureExit;
+    }
+    
+    memcpy(&pa.lan2.capture, capture, sizeof(captureParam));
+
+    if(CFGMGR_OK != (status = paramSave(&pa)))
+    {
+        trace(DEBUG_ERR, "paramSave failed.\n");
+        goto doNetCaptureExit;
+    }
+
+    trace(DEBUG_INFO, "Net Capture succ\n");
+
+doNetCaptureExit:
+    genConfirmMsg(status, out);
+
+    return status;
+}
+
+static cfgMgrStatus netFilter(filterParam *filter, int netNumber)
+{
+    //TODO
+    return CFGMGR_NOT_SUPPORT;
+}
+
+static cfgMgrStatus doNetFilter(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    filterParam *filter = (filterParam *)in->data;
+
+    trace(DEBUG_INFO, "Net Filter start\n");
+
+    if(CFGMGR_OK != (status = netFilter(filter, 1)))
+    {
+        trace(DEBUG_ERR, "net 1 netFilter failed.\n");
+        goto doNetFilterExit;
+    }
+    
+    memcpy(&pa.lan1.filter, filter, sizeof(captureParam));
+
+    filter++;
+    if(CFGMGR_OK != (status = netFilter(filter, 2)))
+    {
+        trace(DEBUG_ERR, "net 2 netFilter failed.\n");
+        goto doNetFilterExit;
+    }
+    
+    memcpy(&pa.lan2.filter, filter, sizeof(filterParam));
+
+    if(CFGMGR_OK != (status = paramSave(&pa)))
+    {
+        trace(DEBUG_ERR, "paramSave failed.\n");
+        goto doNetFilterExit;
+    }
+
+    trace(DEBUG_INFO, "Net Filter succ\n");
+
+doNetFilterExit:
+    genConfirmMsg(status, out);
+
+    return status;
 }
 
 
@@ -852,12 +978,8 @@ static void webProcess (void)
 {
     int len;
     msgID mId;
-    msg m;
+    msg recvMsg, sendMsg;
     cfgMgrStatus status;
-    int netNumber;
-    netParam *net;
-    captureParam *capture;
-//    filterParam *filter;
     
     /** set process name */
     prctl(PR_SET_NAME, WEB_THREAD_NAME);
@@ -892,82 +1014,39 @@ static void webProcess (void)
 
     while(1)
     {
-        if((len = msgRecv(mId, &m)) <= 0)
+        if((len = msgRecv(mId, &recvMsg)) <= 0)
         {
             trace(DEBUG_ERR, "msgRecv %s error !!!\n", CGI_CFGMGR_MSG_NAME);
             break;
         }
 
-        trace(DEBUG_INFO, "msgRecv a message, type %d .\n", m.type);
+        trace(DEBUG_INFO, "msgRecv a message, type %d .\n", recvMsg.type);
 
-        switch(m.type)
+        switch(recvMsg.type)
         {
             case MSGTYPE_LAN1TEST:
-                status = lanTest((netParam *)m.data, 1);
-                m.type = MSGTYPE_COMFIRM;
-//                *(cfgMgrStatus*)m.data = status;
+                status = doLanTest(&recvMsg, &sendMsg, 1);
                 break;
             case MSGTYPE_LAN2TEST:
-                status = lanTest((netParam *)m.data, 1);
-                m.type = MSGTYPE_COMFIRM;
-//                *(cfgMgrStatus*)m.data = status;
+                status = doLanTest(&recvMsg, &sendMsg, 2);
                 break;
             case MSGTYPE_NETCONFIGSAVE:                
-                do
-                {
-                    net = (netParam*)m.data;
-                    if(CFGMGR_OK != (status = setNetParameters(net, 1)))
-                    {
-                        trace(DEBUG_ERR, "net 1 setNetParameters failed.\n");
-                        break;
-                    }
-                    memcpy (&pa.lan1.net, net, sizeof(netParam));
-                    net++;
-                    if(CFGMGR_OK != (status = setNetParameters(net, 2)))
-                    {
-                        trace(DEBUG_ERR, "net 2 setNetParameters failed.\n");
-                        break;
-                    }
-                    memcpy (&pa.lan2.net, net, sizeof(netParam));
-                    status = paramSave(&pa);
-                }while(0);
-                m.type = MSGTYPE_COMFIRM;
-//                *(cfgMgrStatus*)m.data = status;
+                status = doNetConfigSave(&recvMsg, &sendMsg);
                 break;
             case MSGTYPE_NETCAPTURE:                
-                do
-                {
-                    capture = (captureParam *)m.data;
-                    if(CFGMGR_OK != (status = doNetCapture(capture, 1)))
-                    {
-                        trace(DEBUG_ERR, "net 1 doNetCapture failed.\n");
-                        break;
-                    }
-                    memcpy(&pa.lan1.capture, capture, sizeof(captureParam));
-                    capture++;
-                    if(CFGMGR_OK != (status = doNetCapture(capture, 2)))
-                    {
-                        trace(DEBUG_ERR, "net 2 doNetCapture failed.\n");
-                        break;
-                    }
-                    memcpy(&pa.lan2.capture, capture, sizeof(captureParam));
-                    status = paramSave(&pa);
-                }
-                while(0);
-                m.type = MSGTYPE_COMFIRM;
-//                *(cfgMgrStatus*)m.data = status;
+                status = doNetCapture(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_NETFILTER:
+                status = doNetFilter(&recvMsg, &sendMsg);
                 break;
             default:
                 trace(DEBUG_ERR, "Operation not support!!!\n");
                 status = CFGMGR_NOT_SUPPORT;
-                m.type = MSGTYPE_COMFIRM;
-//                *(cfgMgrStatus*)m.data = status;
+                recvMsg.type = MSGTYPE_COMFIRM;
                 break;
         }
 
-        genConfirmMsg(status, &m);
-
-        if(-1 == msgSend(mId, &m))
+        if(-1 == msgSend(mId, &sendMsg))
         {
             trace(DEBUG_ERR, "msgSend failed !!!\n");
             goto webProcessExit;
