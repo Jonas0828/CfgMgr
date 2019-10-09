@@ -26,14 +26,13 @@ static char lastCfgMgrErr[LOG_BUF_LEN_MAX + 1] = {0};
 void trace(int logLevel, const char *fmt, ...)
 {
     va_list ap;
-    int len = 0;
 
     va_start(ap, fmt);
-    vsnprintf(&lastCfgMgrErr[len], LOG_BUF_LEN_MAX - len, fmt, ap);
+    vsnprintf(lastCfgMgrErr, LOG_BUF_LEN_MAX, fmt, ap);
     va_end(ap);
-    
+
     printf(lastCfgMgrErr);
-    
+    printf("\n");
 //    log_save(buffer);
 }
 

@@ -29,13 +29,16 @@
 #include <time.h>
 #include <cfgMgrCgi.h>
 #include <../message.c>
+#include <../share.c>
 
 
 
 #define stringLenZeroChkReturn(str)\
     if (strlen(str) == 0)\
     {\
-        CGIDEBUG("%s line[%d] stringLenZeroChk Fail !!!\n", __FILE__, __LINE__);\
+        if (functionName)\
+            CGIDEBUG("In Function %s : ", functionName);\
+        CGIDEBUG("cann't find a element at %s line %d !!!\n", __FILE__, __LINE__);\
         CGICASSERT(0);\
         return -1;\
     }
@@ -45,6 +48,9 @@ typedef struct
     char *formName;
     int  (*func)(msg *m);
 }formMethod;
+
+static char *functionName = NULL;
+static int isFirstDebugInfo = 1;
 
 /*
  * YYYY-MM-DD HH:MM:SS to time_t
@@ -63,6 +69,38 @@ time_t format2time(char *format)
 	return (mktime(&daytime));
 }
 
+static int login (msg *m)
+{
+    char UserName[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    char Passwd[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    loginRequest *lg = (loginRequest *)m->data;
+
+    m->type = MSGTYPE_LOGIN_REQUEST;
+
+    cgiFormString("UserName", UserName, FORM_ELEMENT_STRING_LEN_MAX);
+    cgiFormString("Passwd", Passwd, FORM_ELEMENT_STRING_LEN_MAX);
+
+    stringLenZeroChkReturn(UserName);
+    stringLenZeroChkReturn(Passwd);
+
+    if (strlen(UserName) > USR_KEY_LNE_MAX)
+    {
+        CGIDEBUG("login UserName[%s] len > %d !!!\n", UserName, USR_KEY_LNE_MAX);
+        return -1;
+    }
+    strncpy(lg->userName, UserName, sizeof(lg->userName));
+
+    if (strlen(Passwd) > USR_KEY_LNE_MAX)
+    {
+        CGIDEBUG("login Passwd[%s] len > %d !!!\n", Passwd, USR_KEY_LNE_MAX);
+        return -1;
+    }
+    strncpy(lg->passwd, Passwd, sizeof(lg->passwd));    
+    
+    return 0;
+}
+
+
 static int netParamGet(netParam *net, int netNumber)
 {
     char Lan_Auto[FORM_ELEMENT_STRING_LEN_MAX] = {0};
@@ -70,6 +108,8 @@ static int netParamGet(netParam *net, int netNumber)
     char Lan_Mask[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char Lan_GateWay[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char Lan_Mac[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+
+    memset(net, 0, sizeof(netParam));
 
     if (netNumber == 1)
     {
@@ -90,9 +130,6 @@ static int netParamGet(netParam *net, int netNumber)
     }
 
     stringLenZeroChkReturn(Lan_Auto);
-    stringLenZeroChkReturn(Lan_IP);
-    stringLenZeroChkReturn(Lan_Mask);
-    stringLenZeroChkReturn(Lan_GateWay);
     stringLenZeroChkReturn(Lan_Mac);
 
     if (strstr(Lan_Auto, "true"))
@@ -102,13 +139,25 @@ static int netParamGet(netParam *net, int netNumber)
     else
     {
         CGIDEBUG ("Lan%d_Auto invalid\n", netNumber);
-        CGICASSERT(0);
+//        CGICASSERT(0);
         return -1;
     }
-    inet_pton(AF_INET, Lan_IP, (void*)&net->ip);
-    inet_pton(AF_INET, Lan_Mask, (void*)&net->mask);
-    inet_pton(AF_INET, Lan_GateWay, (void*)&net->gateway);
-    strncpy(net->mac, Lan_Mac, sizeof(net->mac));
+    
+    if (!net->isDhcp)
+    {
+        stringLenZeroChkReturn(Lan_IP);
+        stringLenZeroChkReturn(Lan_Mask);
+        stringLenZeroChkReturn(Lan_GateWay);        
+        inet_pton(AF_INET, Lan_IP, (void*)&net->ip);
+        inet_pton(AF_INET, Lan_Mask, (void*)&net->mask);
+        inet_pton(AF_INET, Lan_GateWay, (void*)&net->gateway);
+    }    
+
+    if(0 != macString2Hex(Lan_Mac, net->mac))
+    {
+        CGIDEBUG ("Lan%d_Mac %s invalid !!!\n", netNumber, Lan_Mac);
+        return -1;
+    }
 
     return 0;
 }
@@ -121,7 +170,6 @@ static int lan1Test (msg *m)
 
     return netParamGet(net, 1);
 }
-
 
 static int lan2Test (msg *m)
 {
@@ -284,7 +332,7 @@ static int netFilter(msg *m)
 
 static int fileLookUp(msg *m)
 {
-    fileLookUpCtrlInfo *fileLookUpCtrl = (fileLookUpCtrlInfo *)m->data;
+    fileLookUpRequest *fileLookUpCtrl = (fileLookUpRequest *)m->data;
     char NetNumber[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char StartTime[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char EndTime[FORM_ELEMENT_STRING_LEN_MAX] = {0};
@@ -317,7 +365,7 @@ static int diskInfo(msg *m)
 
 static int normalUserMgr(msg *m)
 {
-    normalUserMgrCtrlInfo *normalUserMgrCtrl = (normalUserMgrCtrlInfo *)m->data;
+    normalUserMgrRequest *normalUserMgrCtrl = (normalUserMgrRequest *)m->data;
     char NewKey[FORM_ELEMENT_STRING_LEN_MAX] = {0};
 
     cgiFormString("NewKey", NewKey, FORM_ELEMENT_STRING_LEN_MAX);
@@ -339,7 +387,7 @@ static int normalUserMgr(msg *m)
 
 static int superUserMgr(msg *m)
 {
-    superUserMgrCtrlInfo *superUserMgrCtrl = (superUserMgrCtrlInfo *)m->data;
+    superUserMgrRequest *superUserMgrCtrl = (superUserMgrRequest *)m->data;
     char UserName[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char NewKey[FORM_ELEMENT_STRING_LEN_MAX] = {0};
 
@@ -457,6 +505,7 @@ static int logLookUp(msg *m)
 
 static const formMethod formMethodTable[] = 
 {
+    {"Function_Login", login},
     {"Form_Lan1Test", lan1Test},
     {"Form_Lan2Test", lan2Test},
     {"Form_NetConfigSave", netConfigSave},
@@ -494,8 +543,8 @@ static void confirm2json (msg *m)
     cgiHeaderContentType("text/html");
     
     fprintf(cgiOut, "{\r\n");
-    fprintf(cgiOut, "\"status\":%d\r\n", cfResp->status);
-    fprintf(cgiOut, "\"message\":%s", cfResp->errMessage);
+    fprintf(cgiOut, "\"status\":\"%d\",\r\n", cfResp->status);
+    fprintf(cgiOut, "\"message\":\"%s\"\r\n", cfResp->errMessage);
     fprintf(cgiOut, "}");
 }
 
@@ -520,14 +569,16 @@ int cgiMain()
     msgID              mId;
     formMethod         *fmMethod;
     char formName      [FORM_ELEMENT_STRING_LEN_MAX] = {0};
-    
+
+    functionName = NULL;
 	cgiFormString("FunctionName", formName, FORM_ELEMENT_STRING_LEN_MAX);
 
     if (!strlen(formName))
     {
-        CGIDEBUG("FormName didn't found.\n");
+        CGIDEBUG("FunctionName didn't found.\n");
         return -1;
     }
+    functionName = formName;
 
     if (NULL != (fmMethod = formMethodLookUp(formName)))
     {
@@ -540,7 +591,7 @@ int cgiMain()
     else
     {
         CGIDEBUG("formMethodLookUp failed, formName :%s\n", formName);
-        CGICASSERT(0);
+//        CGICASSERT(0);
         return -1;
     }
 
@@ -548,7 +599,7 @@ int cgiMain()
     if ((msgID)-1 == (mId = msgOpen (CGI_CFGMGR_MSG_NAME)))
 	{
         CGIDEBUG("msgOpen %s failed !!!\n", CGI_CFGMGR_MSG_NAME);
-        CGICASSERT(0);
+//        CGICASSERT(0);
         return -1;
     }
 

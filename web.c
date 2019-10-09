@@ -36,6 +36,7 @@
 #include <message.h>
 #include <assert.h>
 #include <mxml.h>
+#include <share.c>
 
 #define ETHER_ADDR_LEN    6
 #define UP    1
@@ -47,40 +48,11 @@
 
 
 #define WEB_THREAD_NAME "CfgMgrWebThread"
-#define CONFIG_FILE_NAME "/home/chenxu/LOONGSON-2k1000/src/CfgMgr/doc/config.xml"
+#define CONFIG_FILE_NAME "../cfg/config.xml"
 
 pthread_t webThreadId = -1;
 
 static param pa;
-
-static int macString2Hex (char *str, char *mac)
-{
-    int i;
-    int len;
-	
-    if ((len = strlen(str)) < 12)
-		return -1;
-	
-	for (i = 0; i < 6; i++)
-	{
-	    sscanf(&str[i * 2], "%02x", (unsigned int *)&mac[i]);
-	}
-
-	return 0;
-}
-
-static int macHex2String (char *mac, char *str)
-{
-    int i;
-
-	for (i = 0; i < 6; i++)
-	{
-	    snprintf(&str[i*2], 3, "%02x", mac[i]);
-	}
-	str[i] = 0;
-
-	return 0;
-}
 
 static cfgMgrStatus paramLoad(param *p)
 {
@@ -98,7 +70,7 @@ static cfgMgrStatus paramLoad(param *p)
 
 	if(NULL == (fp = fopen(CONFIG_FILE_NAME, "r")))
 	{
-		trace(DEBUG_ERR,  "fopen %s failed\n", CONFIG_FILE_NAME);
+		trace(DEBUG_ERR,  "fopen %s failed", CONFIG_FILE_NAME);
 		return CFGMGR_ERR;
 	}
 
@@ -122,7 +94,7 @@ static cfgMgrStatus paramLoad(param *p)
 			p->lan1.net.isDhcp = TRUE;
 		else
 			p->lan1.net.isDhcp = FALSE;
-		trace(DEBUG_INFO, "Lan1 dhcp %s\n", p->lan1.net.isDhcp ? "true" : "false");
+		trace(DEBUG_INFO, "Lan1 dhcp %s", p->lan1.net.isDhcp ? "true" : "false");
 		/** Lan1_IP */
 	    Lan1_IP = mxmlFindElement(Lan1, Lan1, (const char *)"Lan1_IP", NULL, NULL, MXML_DESCEND);
 		assert(Lan1_IP);
@@ -131,7 +103,7 @@ static cfgMgrStatus paramLoad(param *p)
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		inet_pton(AF_INET, attr_value, (void*)&p->lan1.net.ip);
-        trace(DEBUG_INFO, "Lan1_IP 0x%08x\n", (int)p->lan1.net.ip);
+        trace(DEBUG_INFO, "Lan1_IP 0x%08x", (int)p->lan1.net.ip);
 		/** Lan1_Mask */
 	    Lan1_Mask = mxmlFindElement(Lan1, Lan1, (const char *)"Lan1_Mask", NULL, NULL, MXML_DESCEND);
 		assert(Lan1_Mask);
@@ -140,7 +112,7 @@ static cfgMgrStatus paramLoad(param *p)
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		inet_pton(AF_INET, attr_value, (void*)&p->lan1.net.mask);
-        trace(DEBUG_INFO, "Lan1_Mask 0x%08x\n", (int)p->lan1.net.mask);
+        trace(DEBUG_INFO, "Lan1_Mask 0x%08x", (int)p->lan1.net.mask);
 		/** Lan1_GateWay */
 	    Lan1_GateWay = mxmlFindElement(Lan1, Lan1, (const char *)"Lan1_GateWay", NULL, NULL, MXML_DESCEND);
 		assert(Lan1_GateWay);
@@ -149,7 +121,7 @@ static cfgMgrStatus paramLoad(param *p)
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		inet_pton(AF_INET, attr_value, (void*)&p->lan1.net.gateway);
-        trace(DEBUG_INFO, "Lan1_GateWay 0x%08x\n", (int)p->lan1.net.gateway);
+        trace(DEBUG_INFO, "Lan1_GateWay 0x%08x", (int)p->lan1.net.gateway);
 		/** Lan1_Mac */
 	    Lan1_Mac = mxmlFindElement(Lan1, Lan1, (const char *)"Lan1_Mac", NULL, NULL, MXML_DESCEND);
 		assert(Lan1_Mac);
@@ -158,7 +130,7 @@ static cfgMgrStatus paramLoad(param *p)
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		macString2Hex(attr_value, p->lan1.net.mac);
-        trace(DEBUG_INFO, "Lan1_Mac %s\n", attr_value);
+        trace(DEBUG_INFO, "Lan1_Mac %s", attr_value);
 		/** Lan1_CaptureServiceStatus */
 		Lan1_CaptureServiceStatus = mxmlFindElement(Lan1, Lan1, (const char *)"Lan1_CaptureServiceStatus", NULL, NULL, MXML_DESCEND);
 		assert(Lan1_CaptureServiceStatus);
@@ -170,7 +142,7 @@ static cfgMgrStatus paramLoad(param *p)
 			p->lan1.capture.isCapture = TRUE;
 		else
 			p->lan1.capture.isCapture = FALSE;
-        trace(DEBUG_INFO, "Lan1_CaptureServiceStatus %s\n", p->lan1.capture.isCapture ? "ON":"OFF");
+        trace(DEBUG_INFO, "Lan1_CaptureServiceStatus %s", p->lan1.capture.isCapture ? "ON":"OFF");
 		/** Lan1_AutoUpLoadEnable */
 		Lan1_AutoUpLoadEnable = mxmlFindElement(Lan1, Lan1, (const char *)"Lan1_AutoUpLoadEnable", NULL, NULL, MXML_DESCEND);
 		assert(Lan1_AutoUpLoadEnable);
@@ -182,7 +154,7 @@ static cfgMgrStatus paramLoad(param *p)
 			p->lan1.capture.isCapture = TRUE;
 		else
 			p->lan1.capture.isCapture = FALSE;
-        trace(DEBUG_INFO, "Lan1_AutoUpLoadEnable %s\n", p->lan1.capture.isCapture ? "Y":"N");
+        trace(DEBUG_INFO, "Lan1_AutoUpLoadEnable %s", p->lan1.capture.isCapture ? "Y":"N");
 		/** Lan1_AutoUpLoadPath */
 		Lan1_AutoUpLoadPath = mxmlFindElement(Lan1, Lan1, (const char *)"Lan1_AutoUpLoadPath", NULL, NULL, MXML_DESCEND);
 		assert(Lan1_AutoUpLoadPath);
@@ -191,7 +163,7 @@ static cfgMgrStatus paramLoad(param *p)
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		strncpy(p->lan1.capture.autoUpLoadPath, attr_value, sizeof(p->lan1.capture.autoUpLoadPath));
-        trace(DEBUG_INFO, "Lan1_AutoUpLoadPath %s\n", p->lan1.capture.autoUpLoadPath);
+        trace(DEBUG_INFO, "Lan1_AutoUpLoadPath %s", p->lan1.capture.autoUpLoadPath);
 		/** Lan1_NetFilterServiceStatus */
 		Lan1_NetFilterServiceStatus = mxmlFindElement(Lan1, Lan1, (const char *)"Lan1_NetFilterServiceStatus", NULL, NULL, MXML_DESCEND);
 		assert(Lan1_NetFilterServiceStatus);
@@ -203,7 +175,7 @@ static cfgMgrStatus paramLoad(param *p)
 			p->lan1.filter.isFilter = TRUE;
 		else
 			p->lan1.filter.isFilter = FALSE;
-        trace(DEBUG_INFO, "Lan1_CaptureServiceStatus %s\n", p->lan1.filter.isFilter ? "ON":"OFF");
+        trace(DEBUG_INFO, "Lan1_CaptureServiceStatus %s", p->lan1.filter.isFilter ? "ON":"OFF");
 		
 						
 	/** Lan2 */
@@ -220,7 +192,7 @@ static cfgMgrStatus paramLoad(param *p)
 			p->lan2.net.isDhcp = TRUE;
 		else
 			p->lan2.net.isDhcp = FALSE;
-		trace(DEBUG_INFO, "Lan2 dhcp %s\n", p->lan2.net.isDhcp ? "true" : "false");
+		trace(DEBUG_INFO, "Lan2 dhcp %s", p->lan2.net.isDhcp ? "true" : "false");
 		/** Lan2_IP */
 	    Lan2_IP = mxmlFindElement(Lan2, Lan2, (const char *)"Lan2_IP", NULL, NULL, MXML_DESCEND);
 		assert(Lan2_IP);
@@ -229,7 +201,7 @@ static cfgMgrStatus paramLoad(param *p)
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		inet_pton(AF_INET, attr_value, (void*)&p->lan2.net.ip);
-        trace(DEBUG_INFO, "Lan2_IP 0x%08x\n", (int)p->lan2.net.ip);
+        trace(DEBUG_INFO, "Lan2_IP 0x%08x", (int)p->lan2.net.ip);
 		/** Lan2_Mask */
 	    Lan2_Mask = mxmlFindElement(Lan2, Lan2, (const char *)"Lan2_Mask", NULL, NULL, MXML_DESCEND);
 		assert(Lan2_Mask);
@@ -238,7 +210,7 @@ static cfgMgrStatus paramLoad(param *p)
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		inet_pton(AF_INET, attr_value, (void*)&p->lan2.net.mask);
-        trace(DEBUG_INFO, "Lan2_Mask 0x%08x\n", (int)p->lan2.net.mask);
+        trace(DEBUG_INFO, "Lan2_Mask 0x%08x", (int)p->lan2.net.mask);
 		/** Lan2_GateWay */
 	    Lan2_GateWay = mxmlFindElement(Lan2, Lan2, (const char *)"Lan2_GateWay", NULL, NULL, MXML_DESCEND);
 		assert(Lan2_GateWay);
@@ -247,7 +219,7 @@ static cfgMgrStatus paramLoad(param *p)
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		inet_pton(AF_INET, attr_value, (void*)&p->lan2.net.gateway);
-        trace(DEBUG_INFO, "Lan2_GateWay 0x%08x\n", (int)p->lan2.net.gateway);
+        trace(DEBUG_INFO, "Lan2_GateWay 0x%08x", (int)p->lan2.net.gateway);
 		/** Lan2_Mac */
 	    Lan2_Mac = mxmlFindElement(Lan2, Lan2, (const char *)"Lan2_Mac", NULL, NULL, MXML_DESCEND);
 		assert(Lan2_Mac);
@@ -256,7 +228,7 @@ static cfgMgrStatus paramLoad(param *p)
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		macString2Hex(attr_value, p->lan2.net.mac);
-        trace(DEBUG_INFO, "Lan2_Mac %s\n", attr_value);
+        trace(DEBUG_INFO, "Lan2_Mac %s", attr_value);
 		/** Lan2_CaptureServiceStatus */
 		Lan2_CaptureServiceStatus = mxmlFindElement(Lan2, Lan2, (const char *)"Lan2_CaptureServiceStatus", NULL, NULL, MXML_DESCEND);
 		assert(Lan2_CaptureServiceStatus);
@@ -268,7 +240,7 @@ static cfgMgrStatus paramLoad(param *p)
 			p->lan2.capture.isCapture = TRUE;
 		else
 			p->lan2.capture.isCapture = FALSE;
-        trace(DEBUG_INFO, "Lan2_CaptureServiceStatus %s\n", p->lan2.capture.isCapture ? "ON":"OFF");
+        trace(DEBUG_INFO, "Lan2_CaptureServiceStatus %s", p->lan2.capture.isCapture ? "ON":"OFF");
 		/** Lan2_AutoUpLoadEnable */
 		Lan2_AutoUpLoadEnable = mxmlFindElement(Lan2, Lan2, (const char *)"Lan2_AutoUpLoadEnable", NULL, NULL, MXML_DESCEND);
 		assert(Lan2_AutoUpLoadEnable);
@@ -280,7 +252,7 @@ static cfgMgrStatus paramLoad(param *p)
 			p->lan2.capture.isCapture = TRUE;
 		else
 			p->lan2.capture.isCapture = FALSE;
-        trace(DEBUG_INFO, "Lan2_AutoUpLoadEnable %s\n", p->lan2.capture.isCapture ? "Y":"N");
+        trace(DEBUG_INFO, "Lan2_AutoUpLoadEnable %s", p->lan2.capture.isCapture ? "Y":"N");
 		/** Lan2_AutoUpLoadPath */
 		Lan2_AutoUpLoadPath = mxmlFindElement(Lan2, Lan2, (const char *)"Lan2_AutoUpLoadPath", NULL, NULL, MXML_DESCEND);
 		assert(Lan2_AutoUpLoadPath);
@@ -289,7 +261,7 @@ static cfgMgrStatus paramLoad(param *p)
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		strncpy(p->lan2.capture.autoUpLoadPath, attr_value, sizeof(p->lan2.capture.autoUpLoadPath));
-        trace(DEBUG_INFO, "Lan2_AutoUpLoadPath %s\n", p->lan2.capture.autoUpLoadPath);
+        trace(DEBUG_INFO, "Lan2_AutoUpLoadPath %s", p->lan2.capture.autoUpLoadPath);
 		/** Lan2_NetFilterServiceStatus */
 		Lan2_NetFilterServiceStatus = mxmlFindElement(Lan2, Lan2, (const char *)"Lan2_NetFilterServiceStatus", NULL, NULL, MXML_DESCEND);
 		assert(Lan2_NetFilterServiceStatus);
@@ -301,7 +273,7 @@ static cfgMgrStatus paramLoad(param *p)
 			p->lan2.filter.isFilter = TRUE;
 		else
 			p->lan2.filter.isFilter = FALSE;
-        trace(DEBUG_INFO, "Lan2_CaptureServiceStatus %s\n", p->lan2.filter.isFilter ? "ON":"OFF");
+        trace(DEBUG_INFO, "Lan2_CaptureServiceStatus %s", p->lan2.filter.isFilter ? "ON":"OFF");
 	
 	/** User */
 	User = mxmlFindElement(Config, Config, (const char *)"User", NULL, NULL, MXML_DESCEND);
@@ -317,7 +289,7 @@ static cfgMgrStatus paramLoad(param *p)
 			attr_value = (char * )mxmlGetText(node, &whitespace);
 			assert(attr_value);
 			strncpy(p->users[0].userName, attr_value, USR_KEY_LNE_MAX + 1);
-	        trace(DEBUG_INFO, "Administrators UserName %s\n", p->users[0].userName);
+	        trace(DEBUG_INFO, "Administrators UserName %s", p->users[0].userName);
 			/** UserPws */
 		    UserPws = mxmlFindElement(Administrators, Administrators, (const char *)"UserPws", NULL, NULL, MXML_DESCEND);
 			assert(UserPws);
@@ -326,7 +298,7 @@ static cfgMgrStatus paramLoad(param *p)
 			attr_value = (char * )mxmlGetText(node, &whitespace);
 			assert(attr_value);
 			strncpy(p->users[0].passwd, attr_value, USR_KEY_LNE_MAX + 1);
-	        trace(DEBUG_INFO, "Administrators UserPws %s\n", p->users[0].passwd);	    
+	        trace(DEBUG_INFO, "Administrators UserPws %s", p->users[0].passwd);	    
         /** NomalUser */
 	    NomalUser = mxmlFindElement(User, User, (const char *)"NomalUser", NULL, NULL, MXML_DESCEND);
 		assert(NomalUser);
@@ -338,7 +310,7 @@ static cfgMgrStatus paramLoad(param *p)
 			attr_value = (char * )mxmlGetText(node, &whitespace);
 			assert(attr_value);
 			strncpy(p->users[1].userName, attr_value, USR_KEY_LNE_MAX + 1);
-	        trace(DEBUG_INFO, "NomalUser UserName %s\n", p->users[1].userName);
+	        trace(DEBUG_INFO, "NomalUser UserName %s", p->users[1].userName);
 			/** UserPws */
 		    UserPws = mxmlFindElement(NomalUser, NomalUser, (const char *)"UserPws", NULL, NULL, MXML_DESCEND);
 			assert(UserPws);
@@ -347,7 +319,7 @@ static cfgMgrStatus paramLoad(param *p)
 			attr_value = (char * )mxmlGetText(node, &whitespace);
 			assert(attr_value);
 			strncpy(p->users[1].passwd, attr_value, USR_KEY_LNE_MAX + 1);
-	        trace(DEBUG_INFO, "NomalUser UserPws %s\n", p->users[1].passwd);
+	        trace(DEBUG_INFO, "NomalUser UserPws %s", p->users[1].passwd);
 			
 	mxmlDelete(tree);
 
@@ -566,29 +538,29 @@ static cfgMgrStatus set_addr( in_addr_t addr, int flag, int ethn)
 	test.s_addr = addr;
 	if(!is_netipvalid(addr))
 	{
-	    trace(DEBUG_ERR, "invalid IP[%s]!!!\n", inet_ntoa(test));
+	    trace(DEBUG_ERR, "invalid IP[%s]!!!", inet_ntoa(test));
 		return CFGMGR_IP_INVALID;
 	}
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if(sockfd == -1)
 	{
-        trace(DEBUG_ERR, "socket fail!!!\n");
+        trace(DEBUG_ERR, "socket fail!!!");
         return CFGMGR_ERR;
     }
 
 	if(1 == ethn)
-	    snprintf(ifr.ifr_name, (sizeof(ifr.ifr_name) - 1), "%s", "eth0");
+	    snprintf(ifr.ifr_name, (sizeof(ifr.ifr_name) - 1), "%s", NET1_NAME);
 	else if(2 == ethn)
-		snprintf(ifr.ifr_name, (sizeof(ifr.ifr_name) - 1), "%s", "eth1");
+		snprintf(ifr.ifr_name, (sizeof(ifr.ifr_name) - 1), "%s", NET2_NAME);
     else
 	{
-	    trace(DEBUG_ERR, "netNumber [%d] is invalid!!!\n", ethn);
+	    trace(DEBUG_ERR, "netNumber [%d] is invalid!!!", ethn);
         return CFGMGR_NET_NUMBER_INVALID;
 	}
     
 	/* Read interface flags */
 	if (ioctl(sockfd, SIOCGIFFLAGS, &ifr) < 0)
-		trace(DEBUG_ERR,  "ifdown: shutdown \n");
+		trace(DEBUG_ERR,  "ifdown: shutdown ");
 
     memset(&sin, 0, sizeof(struct sockaddr));
 
@@ -600,7 +572,7 @@ static cfgMgrStatus set_addr( in_addr_t addr, int flag, int ethn)
 
 	if(ioctl(sockfd, flag, &ifr) < 0)
 	{
-		trace(DEBUG_ERR, "fail to set address [%s]. \n", inet_ntoa(test));
+		trace(DEBUG_ERR, "fail to set address [%s]. ", inet_ntoa(test));
         close(sockfd);
 		return CFGMGR_ERR;
 	}
@@ -621,8 +593,20 @@ static cfgMgrStatus set_gateway( in_addr_t addr, int ethn )
 
 	if (sockFd < 0)
 	{
-		trace(DEBUG_ERR, "set_gateway Socket create error.\n");
+		trace(DEBUG_ERR, "set_gateway Socket create error.");
 		return CFGMGR_ERR;
+	}
+
+    /* Delete existing defalt gateway */    
+    memset(&rt, 0, sizeof(struct rtentry));
+    rt.rt_dst.sa_family = AF_INET; 
+    rt.rt_genmask.sa_family = AF_INET; 
+	rt.rt_flags = RTF_UP; 
+	if ((ret = ioctl(sockFd, SIOCDELRT, &rt)) < 0)
+	{
+		 trace(DEBUG_ERR, "ioctl(SIOCDELRT) error[%d]\n", ret);
+		 close(sockFd);
+		 return CFGMGR_ERR;
 	}
 
 	memset(&rt, 0, sizeof(struct rtentry));
@@ -640,7 +624,7 @@ static cfgMgrStatus set_gateway( in_addr_t addr, int ethn )
 		struct in_addr inaddr;
 
 		inaddr.s_addr = addr;
-		trace(DEBUG_ERR, "ioctl(SIOCADDRT) [%s] error[%d]\n", inet_ntoa(inaddr), ret);
+		trace(DEBUG_ERR, "ioctl(SIOCADDRT) [%s] error[%d]", inet_ntoa(inaddr), ret);
 		close(sockFd);
 		return CFGMGR_ERR;
 	}
@@ -676,12 +660,20 @@ static cfgMgrStatus setMacAddress(int netNumber, char *mac)
     struct ifreq ifr;
 	char ifname[20];
 
-    snprintf(ifname, sizeof(ifname), "eth%d", netNumber - 1);
+    if (netNumber == 1)
+        strncpy(ifname, NET1_NAME, sizeof(ifname));
+    else if (netNumber == 2)
+        strncpy(ifname, NET2_NAME, sizeof(ifname));
+    else
+    {
+        trace(DEBUG_ERR, "setMacAddress : netNumber %d invalid !!!", netNumber);
+        return CFGMGR_ERR;
+    }
 	
     fd = socket(AF_INET, SOCK_DGRAM, 0 );
     if ( fd < 0 ) 
 	{
-        trace(DEBUG_ERR, "setMacAddress : Socket create error.\n");
+        trace(DEBUG_ERR, "setMacAddress : Socket create error.");
 		return CFGMGR_ERR;
     }
     ifr.ifr_addr.sa_family = ARPHRD_ETHER;
@@ -690,7 +682,7 @@ static cfgMgrStatus setMacAddress(int netNumber, char *mac)
     
     if((rtn = ioctl(fd, SIOCSIFHWADDR, &ifr) ) != 0)
     {
-        trace(DEBUG_ERR, "setMacAddress : Set Mac Address(SIOCSIFHWADDR) error.\n");
+        trace(DEBUG_ERR, "setMacAddress : Set Mac Address(SIOCSIFHWADDR) error.");
 		return CFGMGR_ERR;
     }
     close(fd);
@@ -704,25 +696,25 @@ static cfgMgrStatus setNetParameters(netParam *net, int netNumber)
     /** set ip */
     if(CFGMGR_OK != (status = set_addr(net->ip, SIOCSIFADDR, netNumber)))
     {
-        trace(DEBUG_ERR, "net%d setNetParameters : set ip failed !!!\n", netNumber);
+        trace(DEBUG_ERR, "net%d setNetParameters : set ip failed !!!", netNumber);
         return status;
     }
     /** set net mask */
     if(CFGMGR_OK != (status = set_addr(net->mask, SIOCSIFNETMASK, netNumber)))
     {
-        trace(DEBUG_ERR, "net%d setNetParameters : set net mask failed !!!\n", netNumber);
+        trace(DEBUG_ERR, "net%d setNetParameters : set net mask failed !!!", netNumber);
         return status;
     }
     /** set gateway */
     if(CFGMGR_OK != (status = set_gateway(net->gateway, netNumber)))
     {
-        trace(DEBUG_ERR, "net%d setNetParameters : set gateway failed !!!\n", netNumber);
+        trace(DEBUG_ERR, "net%d setNetParameters : set gateway failed !!!", netNumber);
         return status;
     }
     /** set mac */
     if(CFGMGR_OK != (status = setMacAddress(netNumber, net->mac)))
     {
-        trace(DEBUG_ERR, "net%d setNetParameters : set mac address failed !!!\n", netNumber);
+        trace(DEBUG_ERR, "net%d setNetParameters : set mac address failed !!!", netNumber);
         return status;
     }
 
@@ -805,6 +797,38 @@ static void genConfirmMsg(cfgMgrStatus status, msg *m)
         resp->errMessage[0] = 0;
 }
 
+static cfgMgrStatus doLogin(msg* in, msg *out)
+{
+    int i;
+    loginRequest *req = (loginRequest *)in->data; 
+    cfgMgrStatus status = CFGMGR_ERR;    
+
+    trace(DEBUG_INFO, "Login start");
+
+    for (i = 0; i < USER_NUM; i++)
+    {
+        if ((strcmp(pa.users[i].userName, req->userName) == 0)
+            && (strcmp(pa.users[i].passwd, req->passwd) == 0))
+        {
+            status = CFGMGR_OK;
+            break;
+        }
+    }
+
+    if (i >= USER_NUM)
+    {
+        trace(DEBUG_INFO, "UserName or Passwd not valid !!!");
+        goto doLoginExit;
+    }
+    
+    trace(DEBUG_INFO, "Login succ");
+    
+doLoginExit:
+
+    genConfirmMsg(status, out);
+    
+    return status;
+}
 
 static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
 {
@@ -812,12 +836,12 @@ static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
     cfgMgrStatus status = CFGMGR_OK;
     netParam *netOrigin;
 
-    trace(DEBUG_INFO, "Lan %d test start\n", netNumber);
+    trace(DEBUG_INFO, "Lan %d test start", netNumber);
 
     /** set ip */
     if(CFGMGR_OK != (status = setNetParameters(net, netNumber)))
     {
-        trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!\n", netNumber);
+        trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!", netNumber);
         goto doLanTestExit;
     }
     
@@ -832,11 +856,11 @@ static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
         netOrigin = &pa.lan2.net;
     if(CFGMGR_OK != (status = setNetParameters(netOrigin, netNumber)))
     {
-        trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!\n", netNumber);
+        trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!", netNumber);
         goto doLanTestExit;
     }
     
-    trace(DEBUG_INFO, "Lan %d test OK\n", netNumber);
+    trace(DEBUG_INFO, "Lan %d test OK", netNumber);
     
 doLanTestExit:
 
@@ -850,11 +874,11 @@ static cfgMgrStatus doNetConfigSave (msg* in, msg *out)
     netParam *net = (netParam *)in->data; 
     cfgMgrStatus status = CFGMGR_OK;
 
-    trace(DEBUG_INFO, "Net config start\n");
+    trace(DEBUG_INFO, "Net config start");
 
     if(CFGMGR_OK != (status = setNetParameters(net, 1)))
     {
-        trace(DEBUG_ERR, "net 1 setNetParameters failed.\n");
+        trace(DEBUG_ERR, "net 1 setNetParameters failed.");
         goto doNetConfigSaveExit;
     }
     
@@ -863,7 +887,7 @@ static cfgMgrStatus doNetConfigSave (msg* in, msg *out)
     net++;    
     if(CFGMGR_OK != (status = setNetParameters(net, 2)))
     {
-        trace(DEBUG_ERR, "net 2 setNetParameters failed.\n");
+        trace(DEBUG_ERR, "net 2 setNetParameters failed.");
         goto doNetConfigSaveExit;
     }
     
@@ -871,11 +895,11 @@ static cfgMgrStatus doNetConfigSave (msg* in, msg *out)
 
     if(CFGMGR_OK != (status = paramSave(&pa)))
     {
-        trace(DEBUG_ERR, "paramSave failed.\n");
+        trace(DEBUG_ERR, "paramSave failed.");
         goto doNetConfigSaveExit;
     }
     
-    trace(DEBUG_INFO, "Net config succ\n");
+    trace(DEBUG_INFO, "Net config succ");
     
 doNetConfigSaveExit:
 
@@ -896,11 +920,11 @@ static cfgMgrStatus doNetCapture(msg *in, msg *out)
     cfgMgrStatus status = CFGMGR_OK;
     captureParam *capture = (captureParam *)in->data;
 
-    trace(DEBUG_INFO, "Net Capture start\n");
+    trace(DEBUG_INFO, "Net Capture start");
 
     if(CFGMGR_OK != (status = netCapture(capture, 1)))
     {
-        trace(DEBUG_ERR, "net 1 netCapture failed.\n");
+        trace(DEBUG_ERR, "net 1 netCapture failed.");
         goto doNetCaptureExit;
     }
     
@@ -909,7 +933,7 @@ static cfgMgrStatus doNetCapture(msg *in, msg *out)
     capture++;
     if(CFGMGR_OK != (status = netCapture(capture, 2)))
     {
-        trace(DEBUG_ERR, "net 2 netCapture failed.\n");
+        trace(DEBUG_ERR, "net 2 netCapture failed.");
         goto doNetCaptureExit;
     }
     
@@ -917,11 +941,11 @@ static cfgMgrStatus doNetCapture(msg *in, msg *out)
 
     if(CFGMGR_OK != (status = paramSave(&pa)))
     {
-        trace(DEBUG_ERR, "paramSave failed.\n");
+        trace(DEBUG_ERR, "paramSave failed.");
         goto doNetCaptureExit;
     }
 
-    trace(DEBUG_INFO, "Net Capture succ\n");
+    trace(DEBUG_INFO, "Net Capture succ");
 
 doNetCaptureExit:
     genConfirmMsg(status, out);
@@ -940,11 +964,11 @@ static cfgMgrStatus doNetFilter(msg *in, msg *out)
     cfgMgrStatus status = CFGMGR_OK;
     filterParam *filter = (filterParam *)in->data;
 
-    trace(DEBUG_INFO, "Net Filter start\n");
+    trace(DEBUG_INFO, "Net Filter start");
 
     if(CFGMGR_OK != (status = netFilter(filter, 1)))
     {
-        trace(DEBUG_ERR, "net 1 netFilter failed.\n");
+        trace(DEBUG_ERR, "net 1 netFilter failed.");
         goto doNetFilterExit;
     }
     
@@ -953,7 +977,7 @@ static cfgMgrStatus doNetFilter(msg *in, msg *out)
     filter++;
     if(CFGMGR_OK != (status = netFilter(filter, 2)))
     {
-        trace(DEBUG_ERR, "net 2 netFilter failed.\n");
+        trace(DEBUG_ERR, "net 2 netFilter failed.");
         goto doNetFilterExit;
     }
     
@@ -961,11 +985,11 @@ static cfgMgrStatus doNetFilter(msg *in, msg *out)
 
     if(CFGMGR_OK != (status = paramSave(&pa)))
     {
-        trace(DEBUG_ERR, "paramSave failed.\n");
+        trace(DEBUG_ERR, "paramSave failed.");
         goto doNetFilterExit;
     }
 
-    trace(DEBUG_INFO, "Net Filter succ\n");
+    trace(DEBUG_INFO, "Net Filter succ");
 
 doNetFilterExit:
     genConfirmMsg(status, out);
@@ -988,14 +1012,14 @@ static void webProcess (void)
     mq_unlink(CGI_CFGMGR_MSG_NAME);
     if((msgID)-1 == (mId = msgOpen(CGI_CFGMGR_MSG_NAME)))
     {
-        trace(DEBUG_ERR, "msgOpen %s error !!!\n", CGI_CFGMGR_MSG_NAME);
+        trace(DEBUG_ERR, "msgOpen %s error !!!", CGI_CFGMGR_MSG_NAME);
         return;
     }
 
     /** load parameters */
     if(CFGMGR_OK != (status = paramLoad(&pa)))
     {
-        trace(DEBUG_ERR, "paramLoad failed(%d)\n", (int)status);
+        trace(DEBUG_ERR, "paramLoad failed(%d)", (int)status);
         goto webProcessExit;
     }
     /** set net parameters */
@@ -1007,7 +1031,7 @@ static void webProcess (void)
 //            net = &pa.lan2.net;
 //        if(CFGMGR_OK != (status = setNetParameters(net, netNumber)))
 //        {
-//            trace(DEBUG_ERR, "webProcess setNetParameters net%d failed!!!\n", netNumber);
+//            trace(DEBUG_ERR, "webProcess setNetParameters net%d failed!!!", netNumber);
 //            goto webProcessExit;
 //        }
 //    }
@@ -1016,14 +1040,17 @@ static void webProcess (void)
     {
         if((len = msgRecv(mId, &recvMsg)) <= 0)
         {
-            trace(DEBUG_ERR, "msgRecv %s error !!!\n", CGI_CFGMGR_MSG_NAME);
+            trace(DEBUG_ERR, "msgRecv %s error !!!", CGI_CFGMGR_MSG_NAME);
             break;
         }
 
-        trace(DEBUG_INFO, "msgRecv a message, type %d .\n", recvMsg.type);
+        trace(DEBUG_INFO, "msgRecv a message, type %d.", recvMsg.type);
 
         switch(recvMsg.type)
         {
+            case MSGTYPE_LOGIN_REQUEST:
+                status = doLogin(&recvMsg, &sendMsg);
+                break;
             case MSGTYPE_LAN1TEST:
                 status = doLanTest(&recvMsg, &sendMsg, 1);
                 break;
@@ -1040,15 +1067,15 @@ static void webProcess (void)
                 status = doNetFilter(&recvMsg, &sendMsg);
                 break;
             default:
-                trace(DEBUG_ERR, "Operation not support!!!\n");
+                trace(DEBUG_ERR, "Operation not support!!!");
                 status = CFGMGR_NOT_SUPPORT;
-                recvMsg.type = MSGTYPE_COMFIRM;
+                genConfirmMsg(status, &sendMsg);
                 break;
         }
 
         if(-1 == msgSend(mId, &sendMsg))
         {
-            trace(DEBUG_ERR, "msgSend failed !!!\n");
+            trace(DEBUG_ERR, "msgSend failed !!!");
             goto webProcessExit;
         }        
     }
@@ -1070,7 +1097,7 @@ int webInit (void)
 	
 	ret = pthread_create(&webThreadId, &attr, (void *) webProcess, NULL);
 	if(ret != 0)
-		trace(DEBUG_ERR,  "Create pthread error[%d]!\n", ret);
+		trace(DEBUG_ERR,  "Create pthread error[%d]!", ret);
 
     return 0;
 }

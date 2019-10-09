@@ -1600,7 +1600,7 @@ cgiFormResultType cgiFormSelectSingle(
 	e = cgiFormEntryFindFirst(name);
 #ifdef CGICDEBUG
 	CGICDEBUGSTART
-	fprintf(dout, "%d\n", (int) e);
+	fprintf(dout, "%d\n", (int)e);
 	CGICDEBUGEND
 #endif /* CGICDEBUG */
 	if (!e) {

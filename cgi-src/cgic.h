@@ -12,24 +12,32 @@
 #include <stdio.h>
 #include <assert.h>
 
+#define CGIDEBUG_FILE_NAME    "./debug"
+
 
 #define CGICDEBUG
 #ifdef CGICDEBUG
 #define CGICDEBUGSTART \
 	{ \
 		FILE *dout; \
-		dout = fopen("/home/boutell/public_html/debug", "a"); 
+		dout = fopen(CGIDEBUG_FILE_NAME, "a"); 
 
 #define CGICDEBUGEND \
 		fclose(dout); \
 	}
 
-#define CGICASSERT(a)        assert(a)
+#define CGICASSERT(a)   
 #define CGIDEBUG(fmt, ...)\
 		{ \
 			FILE *dout; \
-			dout = fopen("/home/boutell/public_html/debug", "a");\
+			dout = fopen(CGIDEBUG_FILE_NAME, "a");\
 			fprintf(dout, fmt, ##__VA_ARGS__);\
+			if (isFirstDebugInfo)\
+            {\
+                cgiHeaderContentType("text/html");\
+                isFirstDebugInfo = 0;\
+			}\
+			fprintf(cgiOut, fmt, ##__VA_ARGS__);\
 			fclose(dout); \
 		}
 

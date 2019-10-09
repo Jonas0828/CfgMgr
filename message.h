@@ -26,7 +26,8 @@
 
 typedef enum
 {
-    MSGTYPE_COMFIRM,
+    MSGTYPE_COMFIRM = 0,
+    MSGTYPE_LOGIN_REQUEST,
     MSGTYPE_LAN1TEST,
     MSGTYPE_LAN2TEST,
     MSGTYPE_NETCONFIGSAVE,
@@ -59,25 +60,31 @@ typedef enum
     CFGMGR_NOT_SUPPORT,
 }cfgMgrStatus;
 
+typedef struct
+{
+    char userName[USR_KEY_LNE_MAX + 1];
+    char passwd[USR_KEY_LNE_MAX + 1];
+}loginRequest;
+
 
 typedef struct
 {
     int netNumber;
     time_t startTime;
     time_t endTime;
-}fileLookUpCtrlInfo;
+}fileLookUpRequest;
 
 
 typedef struct
 {
     char passwd[USR_KEY_LNE_MAX + 1];
-}normalUserMgrCtrlInfo;
+}normalUserMgrRequest;
 
 typedef struct
 {
     char userName[USR_KEY_LNE_MAX + 1];
     char passwd[USR_KEY_LNE_MAX + 1];
-}superUserMgrCtrlInfo;
+}superUserMgrRequest;
 
 typedef enum
 {
