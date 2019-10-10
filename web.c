@@ -584,6 +584,15 @@ static cfgMgrStatus set_addr( in_addr_t addr, int flag, int ethn)
 
 static cfgMgrStatus set_gateway( in_addr_t addr, int ethn )
 {
+#if 1
+    char cmd[200] = {0};
+    char buffer[20] = {0};
+
+    inet_ntop(AF_INET, (void *)&addr, buffer, 16);
+    snprintf(cmd, sizeof(cmd), "route add default gw %s", buffer);
+    system(cmd);
+    return CFGMGR_OK;
+#else
     int sockFd;
 //    struct sockaddr_in sockaddr;
     struct rtentry rt;
@@ -630,6 +639,7 @@ static cfgMgrStatus set_gateway( in_addr_t addr, int ethn )
 	}
 
 	return CFGMGR_OK;
+#endif
 }
 
 int get_mac_addr(char *ifname, char *mac)
@@ -691,14 +701,35 @@ static cfgMgrStatus setMacAddress(int netNumber, char *mac)
 
 static cfgMgrStatus setNetParameters(netParam *net, int netNumber)
 {
-    cfgMgrStatus status;
+    cfgMgrStatus status = CFGMGR_OK;
     
     /** set ip */
+#if 0
+    char cmd[100];
+    char buffer[100];
+    char *netName;
+    
+    inet_ntop(AF_INET, (void *)&net->ip, buffer, 100);
+    if(netNumber == 1)
+        netName = NET1_NAME;
+    else
+        netName = NET2_NAME;
+
+    snprintf(cmd, sizeof(cmd), "ifconfig %s %s", netName, buffer);
+    system(cmd);
+    snprintf(cmd, sizeof(cmd), "ifconfig %s down", netName);
+    system(cmd);    
+    snprintf(cmd, sizeof(cmd), "ifconfig %s up", netName);
+    system(cmd);
+
+
+#else
     if(CFGMGR_OK != (status = set_addr(net->ip, SIOCSIFADDR, netNumber)))
     {
         trace(DEBUG_ERR, "net%d setNetParameters : set ip failed !!!", netNumber);
         return status;
     }
+
     /** set net mask */
     if(CFGMGR_OK != (status = set_addr(net->mask, SIOCSIFNETMASK, netNumber)))
     {
@@ -717,6 +748,7 @@ static cfgMgrStatus setNetParameters(netParam *net, int netNumber)
         trace(DEBUG_ERR, "net%d setNetParameters : set mac address failed !!!", netNumber);
         return status;
     }
+#endif
 
     return status;
 }
@@ -830,24 +862,30 @@ doLoginExit:
     return status;
 }
 
+extern pingTest(in_addr_t);
+
 static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
 {
-    netParam *net = (netParam *)in->data; 
+    lanTestRequest *req = (lanTestRequest *)in->data;
+    netParam *net = &req->net;
     cfgMgrStatus status = CFGMGR_OK;
     netParam *netOrigin;
 
     trace(DEBUG_INFO, "Lan %d test start", netNumber);
-
-    /** set ip */
+#if 0
+    /** set net parameters */
     if(CFGMGR_OK != (status = setNetParameters(net, netNumber)))
     {
         trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!", netNumber);
         goto doLanTestExit;
     }
-    
-    
+        
     /** lan test */
-    //TODO
+    if (0 != pingTest(req->destIp))
+    {
+        trace(DEBUG_ERR, "Lan %d test : pingTest failed !!!", netNumber);
+        status = CFGMGR_NETWORK_UNREACHABLE;
+    }
 
 	/** net parameter set bak */
     if (netNumber == 1)
@@ -859,7 +897,7 @@ static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
         trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!", netNumber);
         goto doLanTestExit;
     }
-    
+#endif    
     trace(DEBUG_INFO, "Lan %d test OK", netNumber);
     
 doLanTestExit:
@@ -876,20 +914,20 @@ static cfgMgrStatus doNetConfigSave (msg* in, msg *out)
 
     trace(DEBUG_INFO, "Net config start");
 
-    if(CFGMGR_OK != (status = setNetParameters(net, 1)))
-    {
-        trace(DEBUG_ERR, "net 1 setNetParameters failed.");
-        goto doNetConfigSaveExit;
-    }
+//    if(CFGMGR_OK != (status = setNetParameters(net, 1)))
+//    {
+//        trace(DEBUG_ERR, "net 1 setNetParameters failed.");
+//        goto doNetConfigSaveExit;
+//    }
     
     memcpy (&pa.lan1.net, net, sizeof(netParam));
 
     net++;    
-    if(CFGMGR_OK != (status = setNetParameters(net, 2)))
-    {
-        trace(DEBUG_ERR, "net 2 setNetParameters failed.");
-        goto doNetConfigSaveExit;
-    }
+//    if(CFGMGR_OK != (status = setNetParameters(net, 2)))
+//    {
+//        trace(DEBUG_ERR, "net 2 setNetParameters failed.");
+//        goto doNetConfigSaveExit;
+//    }
     
     memcpy (&pa.lan2.net, net, sizeof(netParam));
 
@@ -922,20 +960,20 @@ static cfgMgrStatus doNetCapture(msg *in, msg *out)
 
     trace(DEBUG_INFO, "Net Capture start");
 
-    if(CFGMGR_OK != (status = netCapture(capture, 1)))
-    {
-        trace(DEBUG_ERR, "net 1 netCapture failed.");
-        goto doNetCaptureExit;
-    }
+//    if(CFGMGR_OK != (status = netCapture(capture, 1)))
+//    {
+//        trace(DEBUG_ERR, "net 1 netCapture failed.");
+//        goto doNetCaptureExit;
+//    }
     
     memcpy(&pa.lan1.capture, capture, sizeof(captureParam));
 
     capture++;
-    if(CFGMGR_OK != (status = netCapture(capture, 2)))
-    {
-        trace(DEBUG_ERR, "net 2 netCapture failed.");
-        goto doNetCaptureExit;
-    }
+//    if(CFGMGR_OK != (status = netCapture(capture, 2)))
+//    {
+//        trace(DEBUG_ERR, "net 2 netCapture failed.");
+//        goto doNetCaptureExit;
+//    }
     
     memcpy(&pa.lan2.capture, capture, sizeof(captureParam));
 
@@ -966,20 +1004,20 @@ static cfgMgrStatus doNetFilter(msg *in, msg *out)
 
     trace(DEBUG_INFO, "Net Filter start");
 
-    if(CFGMGR_OK != (status = netFilter(filter, 1)))
-    {
-        trace(DEBUG_ERR, "net 1 netFilter failed.");
-        goto doNetFilterExit;
-    }
+//    if(CFGMGR_OK != (status = netFilter(filter, 1)))
+//    {
+//        trace(DEBUG_ERR, "net 1 netFilter failed.");
+//        goto doNetFilterExit;
+//    }
     
     memcpy(&pa.lan1.filter, filter, sizeof(captureParam));
 
     filter++;
-    if(CFGMGR_OK != (status = netFilter(filter, 2)))
-    {
-        trace(DEBUG_ERR, "net 2 netFilter failed.");
-        goto doNetFilterExit;
-    }
+//    if(CFGMGR_OK != (status = netFilter(filter, 2)))
+//    {
+//        trace(DEBUG_ERR, "net 2 netFilter failed.");
+//        goto doNetFilterExit;
+//    }
     
     memcpy(&pa.lan2.filter, filter, sizeof(filterParam));
 

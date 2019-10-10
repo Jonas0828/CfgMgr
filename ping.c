@@ -37,7 +37,6 @@
  static unsigned short icmp_cksum(unsigned char *data, int len);
  static struct timeval icmp_tvsub(struct timeval end, struct timeval begin);
  static void icmp_statistics(void);
- static void icmp_pack(struct icmp *icmph, int seq, struct timeval *tv,int length);
  static int icmp_unpack(char *buf,int len);
 // static void *icmp_recv(void *argv);
  static void icmp_sigint(int signo);
@@ -302,7 +301,7 @@ static int icmp_recv(void)
 #if 1
 
 //主程序
-int main(in_addr_t destIp)
+int pingTest(in_addr_t destIp)
 {
     struct hostent *host = NULL;
 	struct protoent *protocol = NULL;
@@ -311,7 +310,7 @@ int main(in_addr_t destIp)
 	int size = 128*K;
     char *strAddr = "192.168.1.1";
 
-    inet_pton(AF_INET, strAddr, (void*)&destIp);
+//    inet_pton(AF_INET, strAddr, (void*)&destIp);
                                            //获取协议类型
 	protocol = getprotobyname(protoname);
 	if(protocol == NULL)

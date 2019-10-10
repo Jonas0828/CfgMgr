@@ -58,6 +58,7 @@ typedef enum
     CFGMGR_NET_NUMBER_INVALID,
     CFGMGR_IP_INVALID,
     CFGMGR_NOT_SUPPORT,
+    CFGMGR_NETWORK_UNREACHABLE
 }cfgMgrStatus;
 
 typedef struct
@@ -66,6 +67,11 @@ typedef struct
     char passwd[USR_KEY_LNE_MAX + 1];
 }loginRequest;
 
+typedef struct
+{
+    netParam net;
+    in_addr_t destIp;
+}lanTestRequest;
 
 typedef struct
 {

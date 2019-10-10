@@ -15,7 +15,8 @@ AR				=	$(TOOLSCHAIN_PATH)$(TOOLSCHAIN_NAME)ar
 RANLIB          =    $(TOOLSCHAIN_PATH)$(TOOLSCHAIN_NAME)ranlib
 INC 			= 	-I$(CFGMGR_PATH) -I$(CFGMGR_PATH)/cgi-src -I$(CFGMGR_PATH)/lib/mxml-2.9 -I$(CFGMGR_PATH)/lib/sqlite3 
 OPTIM	        =	-fPIC -O0 -g
-CFLAGS 			= 	$(OPTIM) $(INC) -Wall -std=c99 -D_THREAD_SAFE -D_REENTRANT
+#CFLAGS 			= 	$(OPTIM) $(INC) -Wall -std=c99 -D_THREAD_SAFE -D_REENTRANT
+CFLAGS 			= 	$(OPTIM) $(INC) -Wall -D_THREAD_SAFE -D_REENTRANT
 LIBS			=	-lpthread -lrt $(CFGMGR_PATH)/lib/mxml-2.9/libmxml.a
 LDFLAGS 		= 	$(OPTIM) -Wl,-rpath
 

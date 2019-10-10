@@ -164,11 +164,15 @@ static int netParamGet(netParam *net, int netNumber)
 
 static int lan1Test (msg *m)
 {
-    netParam *net = (netParam *)m->data; 
+    lanTestRequest *req = (lanTestRequest *)m->data;
 
     m->type = MSGTYPE_LAN1TEST;
 
-    return netParamGet(net, 1);
+    CGIDEBUG ("cgiRemoteAddr %s \n", cgiRemoteAddr);
+
+    inet_pton(AF_INET, cgiRemoteAddr, (void*)&req->destIp);
+
+    return netParamGet(&req->net, 1);
 }
 
 static int lan2Test (msg *m)
@@ -506,21 +510,21 @@ static int logLookUp(msg *m)
 static const formMethod formMethodTable[] = 
 {
     {"Function_Login", login},
-    {"Form_Lan1Test", lan1Test},
-    {"Form_Lan2Test", lan2Test},
-    {"Form_NetConfigSave", netConfigSave},
-    {"Form_NetCapture", netCapture},
-    {"Form_NetFilter", netFilter},
-    {"Form_FileLookUp", fileLookUp},
-    {"Form_DiskInfo", diskInfo},
-    {"Form_NormalUserMgr", normalUserMgr},
-    {"Form_SuperUserMgr", superUserMgr},
-    {"Form_SystemInfo", systemInfo},
-    {"Form_SystemTimeGet", systemTimeGet},
-    {"Form_SystemTimeSet", systemTimeSet},
-    {"Form_GetVersion", getVersion},
-    {"Form_FactoryReset", factoryReset},
-    {"Form_LogLookUp", logLookUp},
+    {"Function_Lan1Test", lan1Test},
+    {"Function_Lan2Test", lan2Test},
+    {"Function_NetConfigSave", netConfigSave},
+    {"Function_NetCapture", netCapture},
+    {"Function_NetFilter", netFilter},
+    {"Function_FileLookUp", fileLookUp},
+    {"Function_DiskInfo", diskInfo},
+    {"Function_NormalUserMgr", normalUserMgr},
+    {"Function_SuperUserMgr", superUserMgr},
+    {"Function_SystemInfo", systemInfo},
+    {"Function_SystemTimeGet", systemTimeGet},
+    {"Function_SystemTimeSet", systemTimeSet},
+    {"Function_GetVersion", getVersion},
+    {"Function_FactoryReset", factoryReset},
+    {"Function_LogLookUp", logLookUp},
 };
 
 static formMethod *formMethodLookUp (char *formName)
