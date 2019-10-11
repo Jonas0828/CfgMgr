@@ -30,7 +30,17 @@
 #include <cfgMgrCgi.h>
 #include <../message.c>
 #include <../share.c>
-
+#include <unistd.h>
+#include <netdb.h>
+#include <config.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <linux/if.h>  
+#include <linux/ethtool.h> 
+#include <linux/sockios.h>
+#include <net/route.h>
+#include <net/if_arp.h>
 
 
 #define stringLenZeroChkReturn(str)\
@@ -52,21 +62,23 @@ typedef struct
 static char *functionName = NULL;
 static int isFirstDebugInfo = 1;
 
-/*
- * YYYY-MM-DD HH:MM:SS to time_t
- */
-time_t format2time(char *format)
+static void printCgiEnv(void)
 {
-    struct tm daytime;
-
-	daytime.tm_year = atoi(format) - 1900;
-	daytime.tm_mon  = atoi(&format[5]) - 1;
-	daytime.tm_mday = atoi(&format[8]);
-	daytime.tm_hour = atoi(&format[11]);
-	daytime.tm_min = atoi(&format[14]);
-	daytime.tm_sec = atoi(&format[17]);
-
-	return (mktime(&daytime));
+    CGIDEBUG("cgiServerSoftware : %s\n", cgiServerSoftware);
+    CGIDEBUG("cgiServerName : %s\n", cgiServerName);
+    CGIDEBUG("cgiGatewayInterface : %s\n", cgiGatewayInterface);
+    CGIDEBUG("cgiServerProtocol : %s\n", cgiServerProtocol);
+    CGIDEBUG("cgiServerPort : %s\n", cgiServerPort);
+    CGIDEBUG("cgiRequestMethod : %s\n", cgiRequestMethod);
+    CGIDEBUG("cgiPathInfo : %s\n", cgiPathInfo);
+    CGIDEBUG("cgiPathTranslated : %s\n", cgiPathTranslated);
+    CGIDEBUG("cgiScriptName : %s\n", cgiScriptName);
+    CGIDEBUG("cgiQueryString : %s\n", cgiQueryString);
+    CGIDEBUG("cgiRemoteHost : %s\n",cgiRemoteHost );
+    CGIDEBUG("cgiRemoteAddr : %s\n", cgiRemoteAddr);
+    CGIDEBUG("cgiAuthType : %s\n", cgiAuthType);
+    CGIDEBUG("cgiRemoteUser : %s\n", cgiRemoteUser);
+    CGIDEBUG("cgiRemoteIdent : %s\n", cgiRemoteIdent);    
 }
 
 static int login (msg *m)
@@ -168,7 +180,7 @@ static int lan1Test (msg *m)
 
     m->type = MSGTYPE_LAN1TEST;
 
-    CGIDEBUG ("cgiRemoteAddr %s \n", cgiRemoteAddr);
+//    CGIDEBUG ("cgiRemoteAddr %s \n", cgiRemoteAddr);
 
     inet_pton(AF_INET, cgiRemoteAddr, (void*)&req->destIp);
 
@@ -336,25 +348,36 @@ static int netFilter(msg *m)
 
 static int fileLookUp(msg *m)
 {
-    fileLookUpRequest *fileLookUpCtrl = (fileLookUpRequest *)m->data;
+    fileLookUpRequest *fileLookUpReq = (fileLookUpRequest *)m->data;
     char NetNumber[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char StartTime[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char EndTime[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    char start[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    char size[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    char draw[FORM_ELEMENT_STRING_LEN_MAX] = {0};    
 
     cgiFormString("NetNumber", NetNumber, FORM_ELEMENT_STRING_LEN_MAX);
     cgiFormString("StartTime", StartTime, FORM_ELEMENT_STRING_LEN_MAX);
     cgiFormString("EndTime", EndTime, FORM_ELEMENT_STRING_LEN_MAX);
+    cgiFormString("start", start, FORM_ELEMENT_STRING_LEN_MAX);
+    cgiFormString("size", size, FORM_ELEMENT_STRING_LEN_MAX);
+    cgiFormString("draw", draw, FORM_ELEMENT_STRING_LEN_MAX);
 
     stringLenZeroChkReturn(NetNumber);
     stringLenZeroChkReturn(StartTime);
     stringLenZeroChkReturn(EndTime);
+    stringLenZeroChkReturn(start);
+    stringLenZeroChkReturn(size);
+    stringLenZeroChkReturn(draw);    
 
-    fileLookUpCtrl->netNumber = atoi(NetNumber);
+    fileLookUpReq->netNumber = atoi(NetNumber);
+    fileLookUpReq->startTime = format2time(StartTime);
+    fileLookUpReq->endTime = format2time(EndTime);
+    fileLookUpReq->start = atoi(start);
+    fileLookUpReq->size = atoi(size);
+    fileLookUpReq->draw = atoi(draw);
 
-    fileLookUpCtrl->startTime = format2time(StartTime);
-    fileLookUpCtrl->endTime = format2time(EndTime);
-
-    m->type = MSGTYPE_FILELOOKUP;
+    m->type = MSGTYPE_FILELOOKUP_REQUEST;
     
     return 0;
 }
@@ -502,7 +525,7 @@ static int logLookUp(msg *m)
     logLookUpCtrl->startTime = format2time(StartTime);
     logLookUpCtrl->endTime = format2time(EndTime);
 
-    m->type = MSGTYPE_LOGLOOKUP;
+    m->type = MSGTYPE_LOGLOOKUP_REQUEST;
     
     return 0;
 }
@@ -542,15 +565,66 @@ static formMethod *formMethodLookUp (char *formName)
 
 static void confirm2json (msg *m)
 {
-    confirmResponse *cfResp = (confirmResponse *)m->data;
+    confirmResponse *resp = (confirmResponse *)m->data;
 
     cgiHeaderContentType("text/html");
     
     fprintf(cgiOut, "{\r\n");
-    fprintf(cgiOut, "\"status\":\"%d\",\r\n", cfResp->status);
-    fprintf(cgiOut, "\"message\":\"%s\"\r\n", cfResp->errMessage);
+    fprintf(cgiOut, "\"status\":\"%d\",\r\n", resp->status);
+    fprintf(cgiOut, "\"message\":\"%s\"\r\n", resp->errMessage);
     fprintf(cgiOut, "}");
 }
+
+static in_addr_t getNetIp(char *netName)
+{
+    int sock;    
+    int res;    
+    struct ifreq ifr;     
+
+    sock = socket(AF_INET, SOCK_STREAM, 0);    
+    strcpy(ifr.ifr_name, netName);    
+    res = ioctl(sock, SIOCGIFADDR, &ifr);     
+    CGIDEBUG("IP: %s\n",inet_ntoa(((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr));     
+
+    return ((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr;
+}
+
+static void fileLookUpResp2json(msg *m)
+{
+    int i;
+    char buffer[50];
+    struct hostent *hent;
+    fileLookUpResponse *resp = (fileLookUpResponse *)m->data;
+    in_addr_t hostAddr;
+
+    cgiHeaderContentType("text/html");
+//    gethostname(buffer, sizeof(buffer));
+//    CGIDEBUG("hostname : %s\n", buffer);
+    
+    fprintf(cgiOut, "{\r\n");
+    fprintf(cgiOut, "\"recordsFiltered\":\"%d\",\r\n", resp->recordsTotal);
+    fprintf(cgiOut, "\"draw\":\"%d\",\r\n", resp->draw);
+    fprintf(cgiOut, "\"recordsTotal\":\"%d\",\r\n", resp->recordsTotal);
+    fprintf(cgiOut, "\"data\":[\r\n");
+    for (i = 0; i < resp->size; i++)
+    {
+        fprintf(cgiOut, "{\"fileName\":\"%s\",\r\n", resp->elements[i].fileName);
+        time2format(resp->elements[i].modifyTime, buffer);
+        fprintf(cgiOut, "\"modifyTime\":\"%s\",\r\n", buffer);
+        fprintf(cgiOut, "\"sizeMB\":\"%d\",\r\n", resp->elements[i].sizeMB);
+        gethostname(buffer, sizeof(buffer));
+//        hent = gethostbyname(buffer);
+        hostAddr = getNetIp(NET1_NAME);
+        inet_ntop(AF_INET, (void *)&hostAddr, buffer, 50);
+        fprintf(cgiOut, "\"url\":\"%s/NetFiles/%s\"}\r\n", buffer, resp->elements[i].fileName);
+        if (i != (resp->size - 1))
+            fprintf(cgiOut, ",");
+    }
+    
+    fprintf(cgiOut, "]}");
+}
+
+
 
 static void msg2json(msg *m)
 {
@@ -560,6 +634,9 @@ static void msg2json(msg *m)
     {
         case MSGTYPE_COMFIRM:
             confirm2json(m);
+            break;
+        case MSGTYPE_FILELOOKUP_RESPONSE:
+            fileLookUpResp2json(m);
             break;
         default:
             break;

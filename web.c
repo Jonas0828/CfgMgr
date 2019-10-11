@@ -862,7 +862,7 @@ doLoginExit:
     return status;
 }
 
-extern pingTest(in_addr_t);
+extern int pingTest(in_addr_t);
 
 static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
 {
@@ -872,13 +872,13 @@ static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
     netParam *netOrigin;
 
     trace(DEBUG_INFO, "Lan %d test start", netNumber);
-#if 0
+//#if 0
     /** set net parameters */
-    if(CFGMGR_OK != (status = setNetParameters(net, netNumber)))
-    {
-        trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!", netNumber);
-        goto doLanTestExit;
-    }
+//    if(CFGMGR_OK != (status = setNetParameters(net, netNumber)))
+//    {
+//        trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!", netNumber);
+//        goto doLanTestExit;
+//    }
         
     /** lan test */
     if (0 != pingTest(req->destIp))
@@ -888,16 +888,16 @@ static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
     }
 
 	/** net parameter set bak */
-    if (netNumber == 1)
-        netOrigin = &pa.lan1.net;
-    else
-        netOrigin = &pa.lan2.net;
-    if(CFGMGR_OK != (status = setNetParameters(netOrigin, netNumber)))
-    {
-        trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!", netNumber);
-        goto doLanTestExit;
-    }
-#endif    
+//    if (netNumber == 1)
+//        netOrigin = &pa.lan1.net;
+//    else
+//        netOrigin = &pa.lan2.net;
+//    if(CFGMGR_OK != (status = setNetParameters(netOrigin, netNumber)))
+//    {
+//        trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!", netNumber);
+//        goto doLanTestExit;
+//    }
+//#endif    
     trace(DEBUG_INFO, "Lan %d test OK", netNumber);
     
 doLanTestExit:
@@ -1035,6 +1035,48 @@ doNetFilterExit:
     return status;
 }
 
+static cfgMgrStatus doFileLookUp(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    fileLookUpRequest *req = (fileLookUpRequest *)in->data;
+    fileLookUpResponse * resp = (fileLookUpResponse *)out->data;
+    int recordsTotal, i;
+
+    trace(DEBUG_INFO, "File Look Up start");
+
+    memset(out, 0, sizeof(msg));
+
+    /** file look up */
+#if 0
+    /** TODO */
+#else
+{
+    time_t ti;
+    char timeFmt[30];
+
+    recordsTotal = 1000;
+    for (i = 0, ti = req->startTime + req->start; (i < recordsTotal) && (i < req->size); i++, ti++)
+    {
+        time2format1(ti, timeFmt);
+        snprintf(resp->elements[i].fileName, sizeof(resp->elements[i].fileName), "%s", timeFmt);
+        resp->elements[i].modifyTime = ti;
+        resp->elements[i].sizeMB = 10;
+    }
+    resp->draw = req->draw;
+    resp->recordsTotal = recordsTotal;
+    resp->size = i;
+}
+    out->type = MSGTYPE_FILELOOKUP_RESPONSE;
+#endif
+
+    trace(DEBUG_INFO, "File Look Up succ");
+
+doNetFilterExit:
+
+    return status;
+}
+
+
 
 static void webProcess (void)
 {
@@ -1103,6 +1145,9 @@ static void webProcess (void)
                 break;
             case MSGTYPE_NETFILTER:
                 status = doNetFilter(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_FILELOOKUP_REQUEST:
+                status = doFileLookUp(&recvMsg, &sendMsg);
                 break;
             default:
                 trace(DEBUG_ERR, "Operation not support!!!");

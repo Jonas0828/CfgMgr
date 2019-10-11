@@ -125,6 +125,7 @@ int main(int argc, char *argv[]) {
 	cgiGetenv(&cgiAuthType, "AUTH_TYPE");
 	cgiGetenv(&cgiRemoteUser, "REMOTE_USER");
 	cgiGetenv(&cgiRemoteIdent, "REMOTE_IDENT");
+    
 	/* 2.0: the content type string needs to be parsed and modified, so
 		copy it to a buffer. */
 	e = getenv("CONTENT_TYPE");

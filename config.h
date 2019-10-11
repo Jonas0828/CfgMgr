@@ -19,5 +19,6 @@
 #define WEB_THREAD_STACK_SIZE            (512 *1024)
 
 #define NET1_NAME                        "enp0s31f6"
+//#define NET1_NAME                        "wlo1"
 #define NET2_NAME                        "null"
 

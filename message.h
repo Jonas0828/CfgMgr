@@ -33,7 +33,7 @@ typedef enum
     MSGTYPE_NETCONFIGSAVE,
     MSGTYPE_NETCAPTURE,
     MSGTYPE_NETFILTER,
-    MSGTYPE_FILELOOKUP,
+    MSGTYPE_FILELOOKUP_REQUEST,
     MSGTYPE_DISKINFO,
     MSGTYPE_NORMALUSERMGR,
     MSGTYPE_SUPERUSERMGR,
@@ -42,7 +42,9 @@ typedef enum
     MSGTYPE_SYSTEMTIMEGET,
     MSGTYPE_GETVERSION,
     MSGTYPE_FACTORYRESET,
-    MSGTYPE_LOGLOOKUP
+    MSGTYPE_LOGLOOKUP_REQUEST,
+
+    MSGTYPE_FILELOOKUP_RESPONSE,
 }msgType;
 
 //typedef enum
@@ -78,8 +80,26 @@ typedef struct
     int netNumber;
     time_t startTime;
     time_t endTime;
+    int start;          /** Where do we start returning data */
+    int size;           /** how many records du we return */
+    int draw;           /** only web use */
 }fileLookUpRequest;
 
+#define PAGE_RECORDS_MAX    100
+typedef struct
+{
+    char fileName[30];
+    time_t modifyTime;
+    int sizeMB;
+}fileElement;
+
+typedef struct
+{
+    int recordsTotal;
+    int size;
+    int draw;
+    fileElement elements[PAGE_RECORDS_MAX];
+}fileLookUpResponse;
 
 typedef struct
 {
