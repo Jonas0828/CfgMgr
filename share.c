@@ -18,13 +18,15 @@ static int macString2Hex (char *str, char *mac)
 {
     int i;
     int len;
+    int temp;
 	
     if ((len = strlen(str)) < 17)
 		return -1;
 	
 	for (i = 0; i < 6; i++)
 	{
-	    sscanf(&str[i * 2 + i], "%02x", (unsigned int *)&mac[i]);
+	    sscanf(&str[i * 2 + i], "%02x", &temp);
+        mac[i] = temp%256;
 	}
 
 	return 0;

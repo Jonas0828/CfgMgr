@@ -138,11 +138,11 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(node);
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
-		if(strstr(attr_value, "ON"))
+		if(strstr(attr_value, "true"))
 			p->lan1.capture.isCapture = TRUE;
 		else
 			p->lan1.capture.isCapture = FALSE;
-        trace(DEBUG_INFO, "Lan1_CaptureServiceStatus %s", p->lan1.capture.isCapture ? "ON":"OFF");
+        trace(DEBUG_INFO, "Lan1_CaptureServiceStatus %s", p->lan1.capture.isCapture ? "true":"false");
 		/** Lan1_AutoUpLoadEnable */
 		Lan1_AutoUpLoadEnable = mxmlFindElement(Lan1, Lan1, (const char *)"Lan1_AutoUpLoadEnable", NULL, NULL, MXML_DESCEND);
 		assert(Lan1_AutoUpLoadEnable);
@@ -150,11 +150,11 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(node);
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
-		if(strstr(attr_value, "Y"))
+		if(strstr(attr_value, "true"))
 			p->lan1.capture.isCapture = TRUE;
 		else
 			p->lan1.capture.isCapture = FALSE;
-        trace(DEBUG_INFO, "Lan1_AutoUpLoadEnable %s", p->lan1.capture.isCapture ? "Y":"N");
+        trace(DEBUG_INFO, "Lan1_AutoUpLoadEnable %s", p->lan1.capture.isCapture ? "true":"false");
 		/** Lan1_AutoUpLoadPath */
 		Lan1_AutoUpLoadPath = mxmlFindElement(Lan1, Lan1, (const char *)"Lan1_AutoUpLoadPath", NULL, NULL, MXML_DESCEND);
 		assert(Lan1_AutoUpLoadPath);
@@ -171,11 +171,11 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(node);
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
-		if(strstr(attr_value, "ON"))
+		if(strstr(attr_value, "true"))
 			p->lan1.filter.isFilter = TRUE;
 		else
 			p->lan1.filter.isFilter = FALSE;
-        trace(DEBUG_INFO, "Lan1_CaptureServiceStatus %s", p->lan1.filter.isFilter ? "ON":"OFF");
+        trace(DEBUG_INFO, "Lan1_CaptureServiceStatus %s", p->lan1.filter.isFilter ? "true":"false");
 		
 						
 	/** Lan2 */
@@ -236,11 +236,11 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(node);
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
-		if(strstr(attr_value, "ON"))
+		if(strstr(attr_value, "true"))
 			p->lan2.capture.isCapture = TRUE;
 		else
 			p->lan2.capture.isCapture = FALSE;
-        trace(DEBUG_INFO, "Lan2_CaptureServiceStatus %s", p->lan2.capture.isCapture ? "ON":"OFF");
+        trace(DEBUG_INFO, "Lan2_CaptureServiceStatus %s", p->lan2.capture.isCapture ? "true":"false");
 		/** Lan2_AutoUpLoadEnable */
 		Lan2_AutoUpLoadEnable = mxmlFindElement(Lan2, Lan2, (const char *)"Lan2_AutoUpLoadEnable", NULL, NULL, MXML_DESCEND);
 		assert(Lan2_AutoUpLoadEnable);
@@ -248,11 +248,11 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(node);
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
-		if(strstr(attr_value, "Y"))
+		if(strstr(attr_value, "true"))
 			p->lan2.capture.isCapture = TRUE;
 		else
 			p->lan2.capture.isCapture = FALSE;
-        trace(DEBUG_INFO, "Lan2_AutoUpLoadEnable %s", p->lan2.capture.isCapture ? "Y":"N");
+        trace(DEBUG_INFO, "Lan2_AutoUpLoadEnable %s", p->lan2.capture.isCapture ? "true":"false");
 		/** Lan2_AutoUpLoadPath */
 		Lan2_AutoUpLoadPath = mxmlFindElement(Lan2, Lan2, (const char *)"Lan2_AutoUpLoadPath", NULL, NULL, MXML_DESCEND);
 		assert(Lan2_AutoUpLoadPath);
@@ -269,11 +269,11 @@ static cfgMgrStatus paramLoad(param *p)
 		assert(node);
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
-		if(strstr(attr_value, "ON"))
+		if(strstr(attr_value, "true"))
 			p->lan2.filter.isFilter = TRUE;
 		else
 			p->lan2.filter.isFilter = FALSE;
-        trace(DEBUG_INFO, "Lan2_CaptureServiceStatus %s", p->lan2.filter.isFilter ? "ON":"OFF");
+        trace(DEBUG_INFO, "Lan2_CaptureServiceStatus %s", p->lan2.filter.isFilter ? "true":"false");
 	
 	/** User */
 	User = mxmlFindElement(Config, Config, (const char *)"User", NULL, NULL, MXML_DESCEND);
@@ -379,18 +379,18 @@ static cfgMgrStatus paramSave (param *p)
 			Lan1_CaptureServiceStatus = mxmlNewElement(Lan1, "Lan1_CaptureServiceStatus");
 			assert(Lan1_CaptureServiceStatus);
 			if(p->lan1.capture.isCapture)
-				strncpy(buffer, "ON", sizeof(buffer));
+				strncpy(buffer, "true", sizeof(buffer));
 			else
-				strncpy(buffer, "OFF", sizeof(buffer));
+				strncpy(buffer, "false", sizeof(buffer));
 			node = mxmlNewText(Lan1_CaptureServiceStatus, 0, buffer);
 			assert(node);
 			/** Lan1_AutoUpLoadEnable */
 			Lan1_AutoUpLoadEnable = mxmlNewElement(Lan1, "Lan1_AutoUpLoadEnable");
 			assert(Lan1_AutoUpLoadEnable);
 			if(p->lan1.capture.isAutoUpLoad)
-				strncpy(buffer, "Y", sizeof(buffer));
+				strncpy(buffer, "true", sizeof(buffer));
 			else
-				strncpy(buffer, "N", sizeof(buffer));
+				strncpy(buffer, "false", sizeof(buffer));
 			node = mxmlNewText(Lan1_AutoUpLoadEnable, 0, buffer);
 			assert(node);
 			/** Lan1_AutoUpLoadPath */
@@ -402,9 +402,9 @@ static cfgMgrStatus paramSave (param *p)
 			Lan1_NetFilterServiceStatus = mxmlNewElement(Lan1, "Lan1_NetFilterServiceStatus");
 			assert(Lan1_NetFilterServiceStatus);
 			if(p->lan1.filter.isFilter)
-				strncpy(buffer, "ON", sizeof(buffer));
+				strncpy(buffer, "true", sizeof(buffer));
 			else
-				strncpy(buffer, "OFF", sizeof(buffer));
+				strncpy(buffer, "false", sizeof(buffer));
 			node = mxmlNewText(Lan1_NetFilterServiceStatus, 0, buffer);
 			assert(node);
 			
@@ -444,18 +444,18 @@ static cfgMgrStatus paramSave (param *p)
 			Lan2_CaptureServiceStatus = mxmlNewElement(Lan2, "Lan2_CaptureServiceStatus");
 			assert(Lan2_CaptureServiceStatus);
 			if(p->lan2.capture.isCapture)
-				strncpy(buffer, "ON", sizeof(buffer));
+				strncpy(buffer, "true", sizeof(buffer));
 			else
-				strncpy(buffer, "OFF", sizeof(buffer));
+				strncpy(buffer, "false", sizeof(buffer));
 			node = mxmlNewText(Lan2_CaptureServiceStatus, 0, buffer);
 			assert(node);
 			/** Lan2_AutoUpLoadEnable */
 			Lan2_AutoUpLoadEnable = mxmlNewElement(Lan2, "Lan2_AutoUpLoadEnable");
 			assert(Lan2_AutoUpLoadEnable);
 			if(p->lan2.capture.isAutoUpLoad)
-				strncpy(buffer, "Y", sizeof(buffer));
+				strncpy(buffer, "true", sizeof(buffer));
 			else
-				strncpy(buffer, "N", sizeof(buffer));
+				strncpy(buffer, "false", sizeof(buffer));
 			node = mxmlNewText(Lan2_AutoUpLoadEnable, 0, buffer);
 			assert(node);
 			/** Lan2_AutoUpLoadPath */
@@ -467,9 +467,9 @@ static cfgMgrStatus paramSave (param *p)
 			Lan2_NetFilterServiceStatus = mxmlNewElement(Lan2, "Lan2_NetFilterServiceStatus");
 			assert(Lan2_NetFilterServiceStatus);
 			if(p->lan2.filter.isFilter)
-				strncpy(buffer, "ON", sizeof(buffer));
+				strncpy(buffer, "true", sizeof(buffer));
 			else
-				strncpy(buffer, "OFF", sizeof(buffer));
+				strncpy(buffer, "false", sizeof(buffer));
 			node = mxmlNewText(Lan2_NetFilterServiceStatus, 0, buffer);
 		/** User */
 		User = mxmlNewElement(Config, "User");
@@ -879,11 +879,13 @@ static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
 //        trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!", netNumber);
 //        goto doLanTestExit;
 //    }
-        
+     
     /** lan test */
     if (0 != pingTest(req->destIp))
     {
-        trace(DEBUG_ERR, "Lan %d test : pingTest failed !!!", netNumber);
+        struct in_addr destIp;
+        destIp.s_addr = req->destIp;
+        trace(DEBUG_ERR, "Lan %d test : pingTest failed, destIp %s!!!,%x", netNumber, inet_ntoa(destIp), req->destIp);
         status = CFGMGR_NETWORK_UNREACHABLE;
     }
 
@@ -1055,7 +1057,7 @@ static cfgMgrStatus doFileLookUp(msg *in, msg *out)
     char timeFmt[30];
 
     recordsTotal = 1000;
-    for (i = 0, ti = req->startTime + req->start; (i < recordsTotal) && (i < req->size); i++, ti++)
+    for (i = 0, ti = req->startTime + req->start; (i < recordsTotal) && (i < req->length); i++, ti++)
     {
         time2format1(ti, timeFmt);
         snprintf(resp->elements[i].fileName, sizeof(resp->elements[i].fileName), "%s", timeFmt);
@@ -1064,7 +1066,7 @@ static cfgMgrStatus doFileLookUp(msg *in, msg *out)
     }
     resp->draw = req->draw;
     resp->recordsTotal = recordsTotal;
-    resp->size = i;
+    resp->length= i;
 }
     out->type = MSGTYPE_FILELOOKUP_RESPONSE;
 #endif

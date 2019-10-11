@@ -180,7 +180,9 @@ static int lan1Test (msg *m)
 
     m->type = MSGTYPE_LAN1TEST;
 
-//    CGIDEBUG ("cgiRemoteAddr %s \n", cgiRemoteAddr);
+//    CGIDEBUG ("cgiRemoteAddr :%s \n", cgiRemoteAddr);
+
+//    inet_pton(AF_INET, attr_value, (void*)&p->lan1.net.ip);
 
     inet_pton(AF_INET, cgiRemoteAddr, (void*)&req->destIp);
 
@@ -242,9 +244,9 @@ static int captureParamGet(captureParam *capture, int netNumber)
     stringLenZeroChkReturn(Lan_AutoUpLoadEnable);
     stringLenZeroChkReturn(Lan_AutoUpLoadPath);
 
-    if (strstr(Lan_CaptureServiceStatus, "ON"))
+    if (strstr(Lan_CaptureServiceStatus, "true"))
         capture->isCapture = TRUE;
-    else if (strstr(Lan_CaptureServiceStatus, "OFF"))
+    else if (strstr(Lan_CaptureServiceStatus, "false"))
         capture->isCapture = FALSE;
     else
     {
@@ -253,9 +255,9 @@ static int captureParamGet(captureParam *capture, int netNumber)
         return -1;
     }
     
-    if (strstr(Lan_AutoUpLoadEnable, "Y"))
+    if (strstr(Lan_AutoUpLoadEnable, "true"))
         capture->isAutoUpLoad = TRUE;
-    else if (strstr(Lan_AutoUpLoadEnable, "N"))
+    else if (strstr(Lan_AutoUpLoadEnable, "false"))
         capture->isAutoUpLoad = FALSE;
     else
     {
@@ -299,18 +301,18 @@ static int filterParamGet(filterParam *filter, int netNumber)
 
     if (netNumber == 1)
     {
-        cgiFormString("Lan1_CaptureServiceStatus", Lan_NetFilterServiceStatus, FORM_ELEMENT_STRING_LEN_MAX);
+        cgiFormString("Lan1_NetFilterServiceStatus", Lan_NetFilterServiceStatus, FORM_ELEMENT_STRING_LEN_MAX);
     }
     else
     {
-        cgiFormString("Lan2_CaptureServiceStatus", Lan_NetFilterServiceStatus, FORM_ELEMENT_STRING_LEN_MAX);
+        cgiFormString("Lan2_NetFilterServiceStatus", Lan_NetFilterServiceStatus, FORM_ELEMENT_STRING_LEN_MAX);
     }
 
     stringLenZeroChkReturn(Lan_NetFilterServiceStatus);
 
-    if (strstr(Lan_NetFilterServiceStatus, "ON"))
+    if (strstr(Lan_NetFilterServiceStatus, "true"))
         filter->isFilter = TRUE;
-    else if (strstr(Lan_NetFilterServiceStatus, "OFF"))
+    else if (strstr(Lan_NetFilterServiceStatus, "false"))
         filter->isFilter = FALSE;
     else
     {
@@ -353,28 +355,28 @@ static int fileLookUp(msg *m)
     char StartTime[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char EndTime[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char start[FORM_ELEMENT_STRING_LEN_MAX] = {0};
-    char size[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    char length[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char draw[FORM_ELEMENT_STRING_LEN_MAX] = {0};    
 
     cgiFormString("NetNumber", NetNumber, FORM_ELEMENT_STRING_LEN_MAX);
     cgiFormString("StartTime", StartTime, FORM_ELEMENT_STRING_LEN_MAX);
     cgiFormString("EndTime", EndTime, FORM_ELEMENT_STRING_LEN_MAX);
     cgiFormString("start", start, FORM_ELEMENT_STRING_LEN_MAX);
-    cgiFormString("size", size, FORM_ELEMENT_STRING_LEN_MAX);
+    cgiFormString("length", length, FORM_ELEMENT_STRING_LEN_MAX);
     cgiFormString("draw", draw, FORM_ELEMENT_STRING_LEN_MAX);
 
     stringLenZeroChkReturn(NetNumber);
     stringLenZeroChkReturn(StartTime);
     stringLenZeroChkReturn(EndTime);
     stringLenZeroChkReturn(start);
-    stringLenZeroChkReturn(size);
+    stringLenZeroChkReturn(length);
     stringLenZeroChkReturn(draw);    
 
     fileLookUpReq->netNumber = atoi(NetNumber);
     fileLookUpReq->startTime = format2time(StartTime);
     fileLookUpReq->endTime = format2time(EndTime);
     fileLookUpReq->start = atoi(start);
-    fileLookUpReq->size = atoi(size);
+    fileLookUpReq->length = atoi(length);
     fileLookUpReq->draw = atoi(draw);
 
     m->type = MSGTYPE_FILELOOKUP_REQUEST;
@@ -584,7 +586,7 @@ static in_addr_t getNetIp(char *netName)
     sock = socket(AF_INET, SOCK_STREAM, 0);    
     strcpy(ifr.ifr_name, netName);    
     res = ioctl(sock, SIOCGIFADDR, &ifr);     
-    CGIDEBUG("IP: %s\n",inet_ntoa(((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr));     
+//    CGIDEBUG("IP: %s\n",inet_ntoa(((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr));     
 
     return ((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr;
 }
@@ -598,26 +600,23 @@ static void fileLookUpResp2json(msg *m)
     in_addr_t hostAddr;
 
     cgiHeaderContentType("text/html");
-//    gethostname(buffer, sizeof(buffer));
-//    CGIDEBUG("hostname : %s\n", buffer);
     
     fprintf(cgiOut, "{\r\n");
     fprintf(cgiOut, "\"recordsFiltered\":\"%d\",\r\n", resp->recordsTotal);
     fprintf(cgiOut, "\"draw\":\"%d\",\r\n", resp->draw);
     fprintf(cgiOut, "\"recordsTotal\":\"%d\",\r\n", resp->recordsTotal);
     fprintf(cgiOut, "\"data\":[\r\n");
-    for (i = 0; i < resp->size; i++)
+    for (i = 0; i < resp->length; i++)
     {
         fprintf(cgiOut, "{\"fileName\":\"%s\",\r\n", resp->elements[i].fileName);
         time2format(resp->elements[i].modifyTime, buffer);
         fprintf(cgiOut, "\"modifyTime\":\"%s\",\r\n", buffer);
         fprintf(cgiOut, "\"sizeMB\":\"%d\",\r\n", resp->elements[i].sizeMB);
         gethostname(buffer, sizeof(buffer));
-//        hent = gethostbyname(buffer);
-        hostAddr = getNetIp(NET1_NAME);
-        inet_ntop(AF_INET, (void *)&hostAddr, buffer, 50);
-        fprintf(cgiOut, "\"url\":\"%s/NetFiles/%s\"}\r\n", buffer, resp->elements[i].fileName);
-        if (i != (resp->size - 1))
+//        hostAddr = getNetIp(NET1_NAME);
+//        inet_ntop(AF_INET, (void *)&hostAddr, buffer, 50);
+        fprintf(cgiOut, "\"url\":\"/NetFiles/%s\"}\r\n", resp->elements[i].fileName);
+        if (i != (resp->length - 1))
             fprintf(cgiOut, ",");
     }
     
@@ -628,8 +627,6 @@ static void fileLookUpResp2json(msg *m)
 
 static void msg2json(msg *m)
 {
-    
-
     switch(m->type)
     {
         case MSGTYPE_COMFIRM:

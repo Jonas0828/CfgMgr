@@ -81,7 +81,7 @@ typedef struct
     time_t startTime;
     time_t endTime;
     int start;          /** Where do we start returning data */
-    int size;           /** how many records du we return */
+    int length;           /** how many records du we return */
     int draw;           /** only web use */
 }fileLookUpRequest;
 
@@ -96,7 +96,7 @@ typedef struct
 typedef struct
 {
     int recordsTotal;
-    int size;
+    int length;
     int draw;
     fileElement elements[PAGE_RECORDS_MAX];
 }fileLookUpResponse;

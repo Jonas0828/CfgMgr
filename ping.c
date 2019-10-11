@@ -308,7 +308,7 @@ int pingTest(in_addr_t destIp)
 	char protoname[] = "icmp";
 	unsigned long inaddr = 1;
 	int size = 128*K;
-    char *strAddr = "192.168.1.1";
+//    char *strAddr = "192.168.1.1";
 
 //    inet_pton(AF_INET, strAddr, (void*)&destIp);
                                            //获取协议类型
@@ -365,7 +365,7 @@ int pingTest(in_addr_t destIp)
                                   //等待线程结束
                                   //清理并打印统计结果
 	close(rawsock);
-	icmp_statistics();
+//	icmp_statistics();
 	return 0;
 
 }

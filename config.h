@@ -13,12 +13,25 @@
  * 2019/09/25    Chenxu        None              File Create
  ****************************************************************************** 
  */
+
+#define HOST_CX                          1
+#define HOST_ZHANG                       2
+#define HOST_LOONGSON                    3
+
+#define HOST                             HOST_ZHANG
+//#define HOST                             HOST_CX
+
 #define ADMIN_USER_NUM                   1
 #define NORMAL_USER_NUM                  1
 #define USER_NUM                         (ADMIN_USER_NUM + NORMAL_USER_NUM)
 #define WEB_THREAD_STACK_SIZE            (512 *1024)
 
+#if (HOST == HOST_CX)
 #define NET1_NAME                        "enp0s31f6"
-//#define NET1_NAME                        "wlo1"
+#elif (HOST == HOST_ZHANG)
+#define NET1_NAME                        "wlo1"
+#else
+#error "host config error !!!"
+#endif
 #define NET2_NAME                        "null"
 
