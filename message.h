@@ -19,6 +19,7 @@
 #include <mqueue.h>
 #include <parameters.h>
 #include <trace.h>
+#include <config.h>
 
 #define MSG_DATA_LEN_MAX        4096
 
@@ -34,24 +35,20 @@ typedef enum
     MSGTYPE_NETCAPTURE,
     MSGTYPE_NETFILTER,
     MSGTYPE_FILELOOKUP_REQUEST,
+    MSGTYPE_FILEUPLOAD_REQUEST,
     MSGTYPE_DISKINFO,
-    MSGTYPE_NORMALUSERMGR,
-    MSGTYPE_SUPERUSERMGR,
+    MSGTYPE_NORMALUSERMGR_REQUEST,
+    MSGTYPE_SUPERUSERMGR_REQUEST,
     MSGTYPE_SYSTEMINFO,
     MSGTYPE_SYSTEMTIMESET,
     MSGTYPE_SYSTEMTIMEGET,
     MSGTYPE_GETVERSION,
     MSGTYPE_FACTORYRESET,
     MSGTYPE_LOGLOOKUP_REQUEST,
-
+    
     MSGTYPE_FILELOOKUP_RESPONSE,
+    MSGTYPE_FILEUPLOAD_RESPONSE,
 }msgType;
-
-//typedef enum
-//{
-//    COMFIRM_OK,
-//    COMFIRM_ERROR,
-//}comfirmWord;
 
 typedef enum
 {
@@ -60,7 +57,9 @@ typedef enum
     CFGMGR_NET_NUMBER_INVALID,
     CFGMGR_IP_INVALID,
     CFGMGR_NOT_SUPPORT,
-    CFGMGR_NETWORK_UNREACHABLE
+    CFGMGR_NETWORK_UNREACHABLE,
+    CFGMGR_PASSWD_INVALID,
+    CFGMGR_USER_NOT_EXIST,
 }cfgMgrStatus;
 
 typedef struct
@@ -85,10 +84,9 @@ typedef struct
     int draw;           /** only web use */
 }fileLookUpRequest;
 
-#define PAGE_RECORDS_MAX    100
 typedef struct
 {
-    char fileName[30];
+    char fileName[FILE_NAME_LEN_MAX];
     time_t modifyTime;
     int sizeMB;
 }fileElement;
@@ -103,13 +101,26 @@ typedef struct
 
 typedef struct
 {
-    char passwd[USR_KEY_LNE_MAX + 1];
+    char fileName[FILE_NAME_LEN_MAX];
+}fileUpLoadRequest;
+
+typedef struct
+{
+    char fileName[FILE_NAME_LEN_MAX];
+}fileUpLoadResponse;
+
+
+typedef struct
+{
+    char primaryKey[USR_KEY_LNE_MAX + 1];
+    char newKey[USR_KEY_LNE_MAX + 1];
 }normalUserMgrRequest;
 
 typedef struct
 {
     char userName[USR_KEY_LNE_MAX + 1];
-    char passwd[USR_KEY_LNE_MAX + 1];
+    char adminKey[USR_KEY_LNE_MAX + 1];
+    char newKey[USR_KEY_LNE_MAX + 1];
 }superUserMgrRequest;
 
 typedef enum

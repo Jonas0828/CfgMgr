@@ -52,6 +52,12 @@
         CGICASSERT(0);\
         return -1;\
     }
+#define fileNameLenChkReturn(fileName)\
+    if (strlen(fileName) > FILE_NAME_LEN_MAX)\
+    {\
+        CGIDEBUG("%s FileName[%s] len > %d !!!\n", __FUNCTION__, fileName, FILE_NAME_LEN_MAX);\
+        return -1;\
+    }\
 
 typedef struct
 {
@@ -384,6 +390,22 @@ static int fileLookUp(msg *m)
     return 0;
 }
 
+static int fileUpLoad(msg *m)
+{
+    fileUpLoadRequest *req = (fileUpLoadRequest *)m->data;
+    char FileName[FORM_ELEMENT_STRING_LEN_MAX] = {0};  
+
+    cgiFormString("FileName", FileName, FORM_ELEMENT_STRING_LEN_MAX);
+
+    stringLenZeroChkReturn(FileName);
+    fileNameLenChkReturn(FileName);
+
+    strncpy(req->fileName, FileName, sizeof(req->fileName));
+
+    m->type = MSGTYPE_FILEUPLOAD_REQUEST;
+    
+    return 0;
+}
 
 static int diskInfo(msg *m)
 {
@@ -394,52 +416,72 @@ static int diskInfo(msg *m)
 
 static int normalUserMgr(msg *m)
 {
-    normalUserMgrRequest *normalUserMgrCtrl = (normalUserMgrRequest *)m->data;
+    normalUserMgrRequest *req = (normalUserMgrRequest *)m->data;
     char NewKey[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    char PrimaryKey[FORM_ELEMENT_STRING_LEN_MAX] = {0};
 
-    cgiFormString("NewKey", NewKey, FORM_ELEMENT_STRING_LEN_MAX);
+    cgiFormString("NewKey", NewKey, FORM_ELEMENT_STRING_LEN_MAX);    
+    cgiFormString("PrimaryKey", PrimaryKey, FORM_ELEMENT_STRING_LEN_MAX);    
 
     stringLenZeroChkReturn(NewKey);
+    stringLenZeroChkReturn(PrimaryKey);
 
     if (strlen(NewKey) > USR_KEY_LNE_MAX)
     {
         CGIDEBUG("normalUserMgr NewKey[%s] len > %d !!!\n", NewKey, USR_KEY_LNE_MAX);
         return -1;
     }
+    if (strlen(PrimaryKey) > USR_KEY_LNE_MAX)
+    {
+        CGIDEBUG("normalUserMgr PrimaryKey[%s] len > %d !!!\n", PrimaryKey, USR_KEY_LNE_MAX);
+        return -1;
+    }
 
-    strncpy(normalUserMgrCtrl->passwd, NewKey, USR_KEY_LNE_MAX);
+    strncpy(req->newKey, NewKey, sizeof(req->newKey));
+    strncpy(req->primaryKey, PrimaryKey, sizeof(req->primaryKey));
 
-    m->type = MSGTYPE_NORMALUSERMGR;
+    m->type = MSGTYPE_NORMALUSERMGR_REQUEST;
     
     return 0;
 }
 
 static int superUserMgr(msg *m)
 {
-    superUserMgrRequest *superUserMgrCtrl = (superUserMgrRequest *)m->data;
+    superUserMgrRequest *req = (superUserMgrRequest *)m->data;
     char UserName[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    char AdminKey[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char NewKey[FORM_ELEMENT_STRING_LEN_MAX] = {0};
 
     cgiFormString("UserName", UserName, FORM_ELEMENT_STRING_LEN_MAX);
+    cgiFormString("AdminKey", AdminKey, FORM_ELEMENT_STRING_LEN_MAX);
     cgiFormString("NewKey", NewKey, FORM_ELEMENT_STRING_LEN_MAX);
 
     stringLenZeroChkReturn(UserName);
-    stringLenZeroChkReturn(NewKey);
+    stringLenZeroChkReturn(AdminKey);
+    stringLenZeroChkReturn(NewKey);    
 
     if (strlen(UserName) > USR_KEY_LNE_MAX)
     {
         CGIDEBUG("superUserMgr UserName[%s] len > %d !!!\n", UserName, USR_KEY_LNE_MAX);
         return -1;
     }
-    strncpy(superUserMgrCtrl->userName, UserName, USR_KEY_LNE_MAX);
+    strncpy(req->userName, UserName, sizeof(req->userName));
+
+    if (strlen(AdminKey) > USR_KEY_LNE_MAX)
+    {
+        CGIDEBUG("superUserMgr AdminKey[%s] len > %d !!!\n", AdminKey, USR_KEY_LNE_MAX);
+        return -1;
+    }
+    strncpy(req->adminKey, AdminKey, sizeof(req->adminKey));
+    
     if (strlen(NewKey) > USR_KEY_LNE_MAX)
     {
         CGIDEBUG("superUserMgr NewKey[%s] len > %d !!!\n", NewKey, USR_KEY_LNE_MAX);
         return -1;
     }
-    strncpy(superUserMgrCtrl->passwd, NewKey, USR_KEY_LNE_MAX);
+    strncpy(req->newKey, NewKey, sizeof(req->newKey));
 
-    m->type = MSGTYPE_SUPERUSERMGR;
+    m->type = MSGTYPE_SUPERUSERMGR_REQUEST;
     
     return 0;
 }
@@ -541,6 +583,7 @@ static const formMethod formMethodTable[] =
     {"Function_NetCapture", netCapture},
     {"Function_NetFilter", netFilter},
     {"Function_FileLookUp", fileLookUp},
+    {"Function_FileUpLoad", fileUpLoad},    
     {"Function_DiskInfo", diskInfo},
     {"Function_NormalUserMgr", normalUserMgr},
     {"Function_SuperUserMgr", superUserMgr},
@@ -623,6 +666,39 @@ static void fileLookUpResp2json(msg *m)
     fprintf(cgiOut, "]}");
 }
 
+static void fileUpLoadResp2http(msg *m)
+{
+    char fileName[50];
+    char buffer[512];
+    fileUpLoadResponse *resp = (fileLookUpResponse *)m->data;
+    struct stat s;
+    FILE * fp;
+    int len;
+
+    snprintf(fileName, sizeof(fileName), "%s%s", NET_FILES_PATH, resp->fileName);
+    stat(fileName, &s);
+
+//    cgiHeaderContentType("text/html;charset=UTF-8");
+    cgiHeaderContentType("application/octet-stream");
+    fprintf(cgiOut, "Content-Disposition:filename=\"%s\"", resp->fileName);
+    fprintf(cgiOut, "Content-Length:%d", s.st_size);
+    
+
+    if (fp = fopen(fileName, "r"))
+    {
+        while((len = fread(buffer, sizeof(buffer), 1, fp)) > 0)
+        {
+            fwrite(buffer, len, 1, cgiOut);
+        }
+        fclose(fp);
+    }
+    else
+    {
+        CGIDEBUG("file %s fopen failed !!!", fileName);
+    }
+}
+
+
 
 
 static void msg2json(msg *m)
@@ -634,6 +710,9 @@ static void msg2json(msg *m)
             break;
         case MSGTYPE_FILELOOKUP_RESPONSE:
             fileLookUpResp2json(m);
+            break;
+        case MSGTYPE_FILEUPLOAD_RESPONSE:
+            fileUpLoadResp2http(m);
             break;
         default:
             break;

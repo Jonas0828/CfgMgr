@@ -14,7 +14,7 @@
  ****************************************************************************** 
  */
 
-static int macString2Hex (char *str, char *mac)
+static int macString2Hex (char *str, unsigned char *mac)
 {
     int i;
     int len;

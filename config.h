@@ -35,3 +35,9 @@
 #endif
 #define NET2_NAME                        "null"
 
+#define FILE_NAME_LEN_MAX                30
+
+#define PAGE_RECORDS_MAX                 100
+
+#define NET_FILES_PATH                   "../NetFiles/"
+

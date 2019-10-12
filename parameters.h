@@ -34,7 +34,7 @@ typedef struct
     in_addr_t        ip;
     in_addr_t        mask;
     in_addr_t        gateway;
-    char             mac[6];
+    unsigned char    mac[6];
 }netParam;
 
 typedef struct
@@ -66,7 +66,7 @@ typedef struct
 {
     lanParam         lan1;
     lanParam         lan2;
-    userParam        users[2];
+    userParam        users[2];            /** normal user : user[0], super user : user[1] */
 }param;
 
 #endif

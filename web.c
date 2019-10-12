@@ -664,7 +664,7 @@ int get_mac_addr(char *ifname, char *mac)
     return rtn;
 }
 
-static cfgMgrStatus setMacAddress(int netNumber, char *mac)
+static cfgMgrStatus setMacAddress(int netNumber, unsigned char *mac)
 {
     int fd, rtn;
     struct ifreq ifr;
@@ -1078,6 +1078,116 @@ doNetFilterExit:
     return status;
 }
 
+static cfgMgrStatus doFileUpLoad(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    fileUpLoadRequest *req = (fileUpLoadRequest *)in->data;
+    fileUpLoadResponse * resp = (fileUpLoadResponse *)out->data;
+
+    trace(DEBUG_INFO, "File Up Load start");
+
+    memcpy(resp->fileName, req->fileName, FILE_NAME_LEN_MAX);
+
+    out->type = MSGTYPE_FILEUPLOAD_RESPONSE;
+    trace(DEBUG_INFO, "File Up Load succ");
+
+    return status;
+}
+
+
+static cfgMgrStatus doNormalUserMgr(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    normalUserMgrRequest *req = (normalUserMgrRequest *)in->data;
+
+    trace(DEBUG_INFO, "Normal User Manage start");
+
+    memset(out, 0, sizeof(msg));
+
+    if (strcmp(pa.users[1].passwd, req->primaryKey) != 0)
+    {
+        trace(DEBUG_ERR, "Passwd invalid !!!");
+        status = CFGMGR_PASSWD_INVALID;
+        goto doNormalUserMgrExit;
+    }
+
+    if (strlen(req->newKey) > USR_KEY_LNE_MAX)
+    {
+        trace(DEBUG_ERR, "New Passwd len %d > %d !!!", strlen(req->newKey), USR_KEY_LNE_MAX);
+        status = CFGMGR_PASSWD_INVALID;
+        goto doNormalUserMgrExit;
+    }
+
+    strncpy (pa.users[1].passwd, req->newKey, sizeof(pa.users[1].passwd));
+
+    if(CFGMGR_OK != (status = paramSave(&pa)))
+    {
+        trace(DEBUG_ERR, "paramSave failed.");
+        goto doNormalUserMgrExit;
+    }
+
+    trace(DEBUG_INFO, "Normal User Manage succ");
+
+doNormalUserMgrExit:
+    genConfirmMsg(status, out);
+
+    return status;
+}
+
+static cfgMgrStatus doSuperUserMgr(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    superUserMgrRequest *req = (superUserMgrRequest *)in->data;
+
+    trace(DEBUG_INFO, "Super User Manage start");
+
+    memset(out, 0, sizeof(msg));
+
+    if (strcmp(pa.users[0].passwd, req->adminKey) != 0)
+    {
+        trace(DEBUG_ERR, "Passwd invalid !!!");
+        status = CFGMGR_PASSWD_INVALID;
+        goto doSuperUserMgrExit;
+    }
+
+    if (strlen(req->newKey) > USR_KEY_LNE_MAX)
+    {
+        trace(DEBUG_ERR, "New Passwd len %d > %d !!!", strlen(req->newKey), USR_KEY_LNE_MAX);
+        status = CFGMGR_PASSWD_INVALID;
+        goto doSuperUserMgrExit;
+    }
+
+    if (strcmp(pa.users[0].userName, req->userName) == 0)
+    {
+        strncpy(pa.users[0].passwd, req->newKey, sizeof(pa.users[0].passwd));
+    }
+    else if (strcmp(pa.users[1].userName, req->userName) == 0)
+    {
+        strncpy(pa.users[1].passwd, req->newKey, sizeof(pa.users[1].passwd));
+    }
+    else
+    {
+        trace(DEBUG_ERR, "User %s not exist !!!", req->userName);
+        status = CFGMGR_USER_NOT_EXIST;
+        goto doSuperUserMgrExit;
+    }
+
+    if(CFGMGR_OK != (status = paramSave(&pa)))
+    {
+        trace(DEBUG_ERR, "paramSave failed.");
+        goto doSuperUserMgrExit;
+    }
+
+    trace(DEBUG_INFO, "Super User Manage succ");
+
+doSuperUserMgrExit:
+    genConfirmMsg(status, out);
+
+    return status;
+}
+
+
+
 
 
 static void webProcess (void)
@@ -1085,7 +1195,7 @@ static void webProcess (void)
     int len;
     msgID mId;
     msg recvMsg, sendMsg;
-    cfgMgrStatus status;
+    cfgMgrStatus status = CFGMGR_OK;
     
     /** set process name */
     prctl(PR_SET_NAME, WEB_THREAD_NAME);
@@ -1126,7 +1236,7 @@ static void webProcess (void)
             break;
         }
 
-        trace(DEBUG_INFO, "msgRecv a message, type %d.", recvMsg.type);
+//        trace(DEBUG_INFO, "msgRecv a message, type %d.", recvMsg.type);
 
         switch(recvMsg.type)
         {
@@ -1150,6 +1260,15 @@ static void webProcess (void)
                 break;
             case MSGTYPE_FILELOOKUP_REQUEST:
                 status = doFileLookUp(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_FILEUPLOAD_REQUEST:
+                status = doFileUpLoad(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_NORMALUSERMGR_REQUEST:
+                status = doNormalUserMgr(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_SUPERUSERMGR_REQUEST:
+                status = doSuperUserMgr(&recvMsg, &sendMsg);
                 break;
             default:
                 trace(DEBUG_ERR, "Operation not support!!!");
