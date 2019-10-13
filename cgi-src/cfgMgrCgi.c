@@ -496,49 +496,78 @@ static int systemInfo(msg *m)
 
 static int systemTimeGet(msg *m)
 {
-    m->type = MSGTYPE_SYSTEMTIMEGET;
+    m->type = MSGTYPE_SYSTIMEGET_REQUEST;
     
     return 0;
 }
 
 static int systemTimeSet(msg *m)
 {
-    m->type = MSGTYPE_SYSTEMTIMESET;
+    char CorrectTime[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    sysTimeSetRequest * req = (sysTimeSetRequest *)m->data;
+
+    cgiFormString("CorrectTime", CorrectTime, FORM_ELEMENT_STRING_LEN_MAX);    
+    stringLenZeroChkReturn(CorrectTime);
+
+    req->correctTime = format2time(CorrectTime);    
+
+    m->type = MSGTYPE_SYSTIMESET_REQUEST;
     
     return 0;
 }
 
 static int getVersion(msg *m)
 {
-    m->type = MSGTYPE_GETVERSION;
+    m->type = MSGTYPE_GETVERSION_REQUEST;
     
     return 0;
 }
 
 static int factoryReset(msg *m)
 {
-    m->type = MSGTYPE_FACTORYRESET;
+    m->type = MSGTYPE_FACTORYRESET_REQUEST;
     
     return 0;
 }
 
+static int reboot(msg *m)
+{
+    m->type = MSGTYPE_REBOOT_REQUEST;
+    
+    return 0;
+}
+
+
 static int logLookUp(msg *m)
 {
-    logLookUpCtrlInfo *logLookUpCtrl = (logLookUpCtrlInfo *)m->data;
+    logLookUpRequest *logLookUpCtrl = (logLookUpRequest *)m->data;
     char LogType[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char Significance[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char StartTime[FORM_ELEMENT_STRING_LEN_MAX] = {0};
     char EndTime[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    char start[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    char length[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    char draw[FORM_ELEMENT_STRING_LEN_MAX] = {0}; 
 
     cgiFormString("LogType", LogType, FORM_ELEMENT_STRING_LEN_MAX);
     cgiFormString("Significance", Significance, FORM_ELEMENT_STRING_LEN_MAX);
     cgiFormString("StartTime", StartTime, FORM_ELEMENT_STRING_LEN_MAX);
     cgiFormString("EndTime", EndTime, FORM_ELEMENT_STRING_LEN_MAX);
+    cgiFormString("start", start, FORM_ELEMENT_STRING_LEN_MAX);
+    cgiFormString("length", length, FORM_ELEMENT_STRING_LEN_MAX);
+    cgiFormString("draw", draw, FORM_ELEMENT_STRING_LEN_MAX);
 
     stringLenZeroChkReturn(LogType);
     stringLenZeroChkReturn(Significance);
     stringLenZeroChkReturn(StartTime);
-    stringLenZeroChkReturn(EndTime);    
+    stringLenZeroChkReturn(EndTime);
+    stringLenZeroChkReturn(start);
+    stringLenZeroChkReturn(length);
+    stringLenZeroChkReturn(draw);    
+
+    logLookUpCtrl->start = atoi(start);
+    logLookUpCtrl->length = atoi(length);
+    logLookUpCtrl->draw = atoi(draw);
 
     if (strstr(LogType, "all"))
         logLookUpCtrl->logType = LOGTYPE_ALL;
@@ -549,7 +578,7 @@ static int logLookUp(msg *m)
     else
     {
         CGIDEBUG ("LogType[%s] invalid\n", LogType);
-        CGICASSERT(0);
+//        CGICASSERT(0);
         return -1;
     }
 
@@ -562,7 +591,7 @@ static int logLookUp(msg *m)
     else
     {
         CGIDEBUG ("Significance[%s] invalid\n", Significance);
-        CGICASSERT(0);
+//        CGICASSERT(0);
         return -1;
     }
 
@@ -592,6 +621,7 @@ static const formMethod formMethodTable[] =
     {"Function_SystemTimeSet", systemTimeSet},
     {"Function_GetVersion", getVersion},
     {"Function_FactoryReset", factoryReset},
+    {"Function_Reboot", reboot},
     {"Function_LogLookUp", logLookUp},
 };
 
@@ -698,7 +728,59 @@ static void fileUpLoadResp2http(msg *m)
     }
 }
 
+static void sysTimeGetResp2json(msg *m)
+{
+    sysTimeGetResponse *resp = (sysTimeGetResponse *)m->data;
+    char fmt[20];
 
+    cgiHeaderContentType("text/html");
+    
+    time2format(resp->currentTime, fmt);    
+    fprintf(cgiOut, "{\"currentTime\":\"%d\"}\r\n", fmt);
+}
+
+static void getVersionResp2json(msg *m)
+{
+    versionGetResponse *resp = (versionGetResponse *)m->data;
+
+    cgiHeaderContentType("text/html");
+    
+    fprintf(cgiOut, "{\r\n");
+    fprintf(cgiOut, "\"LogicVersion\":\"%s\",\r\n", resp->logicVersion);
+    fprintf(cgiOut, "\"CfgMgrVersion\":\"%s\"\r\n", resp->cfgMgrVersion);
+    fprintf(cgiOut, "}");
+}
+
+static void logLookUpResp2json(msg *m)
+{
+    int i;
+    char buffer[50];
+    struct hostent *hent;
+    logLookUpResponse *resp = (logLookUpResponse *)m->data;
+    in_addr_t hostAddr;
+
+    cgiHeaderContentType("text/html");
+    
+    fprintf(cgiOut, "{\r\n");
+    fprintf(cgiOut, "\"recordsFiltered\":\"%d\",\r\n", resp->recordsTotal);
+    fprintf(cgiOut, "\"draw\":\"%d\",\r\n", resp->draw);
+    fprintf(cgiOut, "\"recordsTotal\":\"%d\",\r\n", resp->recordsTotal);
+    fprintf(cgiOut, "\"data\":[\r\n");
+    for (i = 0; i < resp->length; i++)
+    {
+        time2format(resp->elements[i].occurTime, buffer);
+        fprintf(cgiOut, "\"LogTime\":\"%s\",\r\n", buffer);
+        fprintf(cgiOut, "{\"LogType\":\"%s\",\r\n", 
+            (resp->elements[i].typ == LOGTYPE_SYSTEM) ? "system":"user";
+        fprintf(cgiOut, "\"Significance\":\"%s\",\r\n", 
+            (resp->elements[i].sgnfcc == LOGSIGNIFICANCE_GENERAL) ? "genarl":"key");
+        fprintf(cgiOut, "\"content\":\"%s\",\r\n", resp->elements[i].content);
+        if (i != (resp->length - 1))
+            fprintf(cgiOut, ",");
+    }
+    
+    fprintf(cgiOut, "]}");
+}
 
 
 static void msg2json(msg *m)
@@ -713,6 +795,15 @@ static void msg2json(msg *m)
             break;
         case MSGTYPE_FILEUPLOAD_RESPONSE:
             fileUpLoadResp2http(m);
+            break;
+        case MSGTYPE_SYSTIMEGET_RESPONSE:
+            sysTimeGetResp2json(m);
+            break;
+        case MSGTYPE_GETVERSION_RESPONSE:
+            getVersionResp2json(m);
+            break;
+        case MSGTYPE_LOGLOOKUP_RESPONSE:
+            logLookUpResp2json(m);
             break;
         default:
             break;

@@ -40,14 +40,19 @@ typedef enum
     MSGTYPE_NORMALUSERMGR_REQUEST,
     MSGTYPE_SUPERUSERMGR_REQUEST,
     MSGTYPE_SYSTEMINFO,
-    MSGTYPE_SYSTEMTIMESET,
-    MSGTYPE_SYSTEMTIMEGET,
-    MSGTYPE_GETVERSION,
-    MSGTYPE_FACTORYRESET,
+    MSGTYPE_SYSTIMESET_REQUEST,
+    MSGTYPE_SYSTIMEGET_REQUEST,
+    MSGTYPE_GETVERSION_REQUEST,
+    MSGTYPE_FACTORYRESET_REQUEST,
+    MSGTYPE_REBOOT_REQUEST,
     MSGTYPE_LOGLOOKUP_REQUEST,
+    
     
     MSGTYPE_FILELOOKUP_RESPONSE,
     MSGTYPE_FILEUPLOAD_RESPONSE,
+    MSGTYPE_SYSTIMEGET_RESPONSE,
+    MSGTYPE_GETVERSION_RESPONSE,
+    MSGTYPE_LOGLOOKUP_RESPONSE,
 }msgType;
 
 typedef enum
@@ -123,19 +128,35 @@ typedef struct
     char newKey[USR_KEY_LNE_MAX + 1];
 }superUserMgrRequest;
 
+typedef struct
+{
+    time_t currentTime;
+}sysTimeGetResponse;
+
+typedef struct
+{
+    time_t correctTime;
+}sysTimeSetRequest;
+
+typedef struct
+{
+    char cfgMgrVersion[VERSION_STRING_LEN_MAX + 1];
+    char logicVersion[VERSION_STRING_LEN_MAX + 1];
+}versionGetResponse;
+
 typedef enum
 {
     LOGTYPE_USER,
     LOGTYPE_SYSTEM,
     LOGTYPE_ALL,
-}msgLogType;
+}logType;
 
 typedef enum
 {
     LOGSIGNIFICANCE_GENERAL,
     LOGSIGNIFICANCE_KEY,
     LOGSIGNIFICANCE_ALL
-}msgLogSignificance;
+}logSignificance;
 
 typedef struct
 {
@@ -143,7 +164,26 @@ typedef struct
     msgLogSignificance logSignificance;
     time_t startTime;
     time_t endTime;
-}logLookUpCtrlInfo;
+    int start;
+    int length;
+    int draw;
+}logLookUpRequest;
+
+typedef struct
+{
+    time_t occurTime;
+    logType typ;
+    logSignificance sgnfcc;
+    char content[LOG_BUF_LEN_MAX + 1];
+}logElement;
+
+typedef struct
+{
+    int recordsTotal;
+    int length;
+    int draw;
+    logElement elements[PAGE_RECORDS_MAX];
+}logLookUpResponse;
 
 typedef struct
 {

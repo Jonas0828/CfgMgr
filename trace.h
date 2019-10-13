@@ -18,8 +18,6 @@
 #define DEBUG_WARN         2
 #define DEBUG_INFO         3
 
-#define LOG_BUF_LEN_MAX    256
-
 
 void trace (int logLevel, const char *fmt, ...);
 

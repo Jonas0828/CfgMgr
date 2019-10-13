@@ -37,6 +37,7 @@
 #include <assert.h>
 #include <mxml.h>
 #include <share.c>
+#include <version.h>
 
 #define ETHER_ADDR_LEN    6
 #define UP    1
@@ -1073,7 +1074,7 @@ static cfgMgrStatus doFileLookUp(msg *in, msg *out)
 
     trace(DEBUG_INFO, "File Look Up succ");
 
-doNetFilterExit:
+//doNetFilterExit:
 
     return status;
 }
@@ -1186,6 +1187,144 @@ doSuperUserMgrExit:
     return status;
 }
 
+static cfgMgrStatus doSysTimeGet(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    sysTimeGetResponse *resp = (sysTimeGetResponse *)out->data;
+
+    trace(DEBUG_INFO, "SysTimeGet start");
+
+    resp->currentTime = time(NULL);
+    out->type = MSGTYPE_SYSTIMEGET_RESPONSE
+
+    trace(DEBUG_INFO, "SysTimeGet succ");
+
+    return status;
+}
+
+static cfgMgrStatus doSysTimeSet(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    sysTimeSetRequest *req = (sysTimeSetRequest *)in->data;
+
+    trace(DEBUG_INFO, "SysTimeSet start");
+
+    memset(out, 0, sizeof(msg));
+
+    stime(&req->correctTime);
+
+    trace(DEBUG_INFO, "SysTimeSet succ");
+
+    genConfirmMsg(status, out);
+
+    return status;
+}
+
+static int logicVersionGet (void)
+{
+    int ver = 0x1000000;
+
+    return ver;
+}
+
+static cfgMgrStatus doVersionGet(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    versionGetResponse *resp = (versionGetResponse *)out->data;
+    int logicVersion;
+
+    trace(DEBUG_INFO, "VersionGet start");
+
+    memset (out, 0, sizeof(msg));
+
+    snprintf(resp->cfgMgrVersion, sizeof(resp->cfgMgrVersion), "V%d.%d", CFGMGR_MAJOR ,CFGMGR_MINOR);
+    logicVersion = logicVersionGet();
+    snprintf(resp->logicVersion, sizeof(resp->logicVersion), "V%d.%d", logicVersion>>24, logicVersion>>16 & 0xff);    
+    
+    out->type = MSGTYPE_GETVERSION_RESPONSE;
+    
+    trace(DEBUG_INFO, "VersionGet succ");
+
+    return status;
+}
+
+static cfgMgrStatus doFactoryReset(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+
+    trace(DEBUG_INFO, "FactoryReset start");
+
+    status  = CFGMGR_NOT_SUPPORT;
+    trace(DEBUG_ERR, "FactoryReset not support !!!");
+    goto factoryResetExit;
+
+    trace(DEBUG_INFO, "FactoryReset succ");
+    
+factoryResetExit:
+    genConfirmMsg(status, out);
+
+    return status;
+}
+
+static cfgMgrStatus doReboot(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+
+    trace(DEBUG_INFO, "Reboot start");
+
+    status  = CFGMGR_NOT_SUPPORT;
+    trace(DEBUG_ERR, "Reboot not support !!!");
+    goto rebootExit;
+
+    trace(DEBUG_INFO, "Reboot succ");
+    
+rebootExit:
+    genConfirmMsg(status, out);
+
+    return status;
+}
+
+static cfgMgrStatus doLogLookUp(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    logLookUpRequest *req = (logLookUpRequest *)in->data;
+    logLookUpResponse * resp = (logLookUpResponse *)out->data;
+    int recordsTotal, i;
+
+    trace(DEBUG_INFO, "Log Look Up start");
+
+    memset(out, 0, sizeof(msg));
+
+    /** file look up */
+#if 0
+    /** TODO */
+#else
+{
+    time_t ti;
+    char timeFmt[30];
+
+    recordsTotal = 1000;
+    for (i = 0, ti = req->startTime + req->start; (i < recordsTotal) && (i < req->length); i++, ti++)
+    {
+        resp->elements[i].typ = LOGTYPE_USER;
+        resp->elements[i].occurTime = ti;
+        resp->elements[i].sgnfcc = LOGSIGNIFICANCE_GENERAL;
+        snprintf(resp->elements[i].content, LOG_BUF_LEN_MAX, "Test log %d", i+1);
+    }
+    resp->draw = req->draw;
+    resp->recordsTotal = recordsTotal;
+    resp->length= i;
+}
+    out->type = MSGTYPE_LOGLOOKUP_RESPONSE;
+#endif
+
+    trace(DEBUG_INFO, "Log Look Up succ");
+
+//doNetFilterExit:
+
+    return status;
+}
+
 
 
 
@@ -1270,6 +1409,25 @@ static void webProcess (void)
             case MSGTYPE_SUPERUSERMGR_REQUEST:
                 status = doSuperUserMgr(&recvMsg, &sendMsg);
                 break;
+            case MSGTYPE_SYSTIMEGET_REQUEST:
+                status = doSysTimeGet(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_SYSTIMESET_REQUEST:
+                status = doSysTimeSet(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_GETVERSION_REQUEST:
+                status = doVersionGet(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_FACTORYRESET_REQUEST:
+                status = doFactoryReset(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_REBOOT_REQUEST:
+                status = doReboot(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_LOGLOOKUP_REQUEST:
+                status = doLogLookUp(&recvMsg, &sendMsg);
+                break;
+            
             default:
                 trace(DEBUG_ERR, "Operation not support!!!");
                 status = CFGMGR_NOT_SUPPORT;

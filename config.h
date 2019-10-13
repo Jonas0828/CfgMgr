@@ -37,7 +37,13 @@
 
 #define FILE_NAME_LEN_MAX                30
 
+#define LOG_BUF_LEN_MAX                  FILE_NAME_LEN_MAX
+
 #define PAGE_RECORDS_MAX                 100
 
 #define NET_FILES_PATH                   "../NetFiles/"
+
+#define VERSION_STRING_LEN_MAX           10
+
+#define LOG_DATA_BASE_FILE_NAME          "../cfgmgrLog/cfgmgrLog.db"
 
