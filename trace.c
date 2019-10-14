@@ -20,6 +20,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sqlite3.h>
+#include <config.h>
+#include <pthread.h>
+#include <assert.h>
 
 
 #define LOG_LOCK 	    		pthread_mutex_lock(&logMutex)
@@ -30,54 +33,22 @@ static pthread_mutex_t logMutex;
 static char lastCfgMgrErr[LOG_BUF_LEN_MAX + 1] = {0};
 
 
-
-void trace(int logLevel, const char *fmt, ...)
-{
-    va_list ap;
-
-    va_start(ap, fmt);
-    vsnprintf(lastCfgMgrErr, LOG_BUF_LEN_MAX, fmt, ap);
-    va_end(ap);
-
-    printf(lastCfgMgrErr);
-    printf("\n");
-//    log_save(buffer);
-}
-
-const char *getLastCfgMgrErr(void)
-{
-    return (const char *)lastCfgMgrErr;
-}
-
-void logInit( void )
-{
-    if(0 != pthread_mutex_init(&logMutex, NULL))
-	{
-		printf("create logMutex failed\n");
-	}
-}
-
 static sqlite3 *logOpen(char *fileName)
 {
-    uint32 index;
 	sqlite3 *db;
-	struct tm daytime;
-	time_t sec, lsec = 0;
-	uint32 ms, lms = 0;
-	char buf[30];
 	int result;
 	char *errmsg = NULL;
 	char *sql = "create table if not exists logtable( \
 		OccurTime, \
 		LogType,\
 		Significance,\
-		Content
+		Content\
 		)";
 
     result = sqlite3_open(fileName, &db);  
 	if(result != SQLITE_OK)
 	{
-		trace(DEBUG_ERR, "Can't open datebase(sqlite_errmsg : %s)\n", sqlite3_errmsg(db));
+		trace(DEBUG_ERR, SYSTEM, "Can't open datebase(sqlite_errmsg : %s)\n", sqlite3_errmsg(db));
 		return NULL;
 	}
 	result = sqlite3_exec(db, sql,0,0, &errmsg);
@@ -94,7 +65,7 @@ static void logClose(sqlite3 * db)
     sqlite3_close(db);
 }
 
-void logWrite(logType typ, logSignificance sgnfcc, char *content)
+static void logWrite(logType typ, logSignificance sgnfcc, char *content)
 {
 
 #define MAX_MESSAGE_LEN		20
@@ -102,17 +73,13 @@ void logWrite(logType typ, logSignificance sgnfcc, char *content)
 	int result;
 	char *errmsg = NULL;
 	char sql[200];
-	char tbuf[30] ={0};
 	time_t tinow = time(NULL);
-	struct tm daytime;
-	struct timeval tv;
 
     LOG_LOCK;
 
-    time2format(NULL, tbuf);
 	memset(sql, 0x00, sizeof(sql));
 	sprintf(sql, "insert into logtable values('%d','%d','%d','%s')", 
-		tinow, typ, sgnfcc, content);
+		(int)tinow, (int)typ, (int)sgnfcc, content);
 
     db = logOpen(LOG_DATA_BASE_FILE_NAME);
 	assert(db);
@@ -128,5 +95,108 @@ Write_Err:
     
 	LOG_UNLOCK;
 }
+
+int logRequest(time_t s, time_t e, logType typ, 
+    logSignificance sgnfcc, int start, logElement *pElements, int elementMax)
+{
+    sqlite3 *db;
+	char sql[200];
+	int result;
+	char *errmsg = NULL;
+	int nrow = 0, ncol = 0, i, element;
+	char **table;
+
+	LOG_LOCK;
+    
+	if(NULL == (db = logOpen(LOG_DATA_BASE_FILE_NAME)))
+	{
+	    printf("logOpen %s failed\n", LOG_DATA_BASE_FILE_NAME);
+		return -1;
+	}
+    
+    if ((typ != LOGTYPE_ALL) && (sgnfcc != LOGSIGNIFICANCE_ALL))
+    	sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'\
+    	    and LogType=%d and Significance=%d", (int)s, (int)e, (int)typ, sgnfcc);
+    else if((typ == LOGTYPE_ALL) && (sgnfcc != LOGSIGNIFICANCE_ALL))
+        sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'\
+    	    and Significance=%d", (int)s, (int)e, (int)sgnfcc);
+    else if((typ != LOGTYPE_ALL) && (sgnfcc == LOGSIGNIFICANCE_ALL))
+        sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'\
+    	    and LogType=%d", (int)s, (int)e, (int)typ);
+    else
+    {
+        sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'", (int)s, (int)e);           
+    }
+
+//    printf("sql : %s\n", sql);
+    
+	result = sqlite3_exec(db,sql,0,0,&errmsg);
+    if(result != SQLITE_OK) 
+	{
+		printf("%s failed, result[%d] errmsg[%s]\n", sql, result, errmsg);
+		goto logRequestExit;
+	}
+	sqlite3_get_table(db,sql,&table,&nrow,&ncol,&errmsg);
+//	printf("nrow = %d, ncol = %d\n", nrow, ncol);
+//    if (ncol != 4)
+//    {
+//        printf("ncol != 4, invalid !!!\n");
+//		goto logRequestExit;
+//    }
+//	printf("number of records = %d\n\n", nrow);
+	for(i = 1 + start, element = 0; (i < nrow+1) && (element < elementMax); i++, element++) 
+	{
+//	    printf("%-10s    %-3s    %-3s    %-40s\n", 
+//            table[i*ncol+0], table[i*ncol+1], table[i*ncol+2], table[i*ncol+3]);
+        pElements[element].occurTime = (time_t)atoi(table[i*ncol+0]);
+        pElements[element].typ = (logType)atoi(table[i*ncol+1]);
+        pElements[element].sgnfcc = (logSignificance)atoi(table[i*ncol+2]);
+        strncpy(pElements[element].content, table[i*ncol+3], LOG_BUF_LEN_MAX);
+	}
+
+    if(nrow > 0)
+        nrow--;
+
+logRequestExit:
+	sqlite3_free_table(table);
+	logClose(db);
+	LOG_UNLOCK;
+    
+	return (nrow);
+}
+
+void logInit( void )
+{
+    if(0 != pthread_mutex_init(&logMutex, NULL))
+	{
+		printf("create logMutex failed\n");
+	}
+}
+
+void trace(int logLevel, int typ, const char *fmt, ...)
+{
+    va_list ap;
+    logSignificance sgnfcc;
+
+    va_start(ap, fmt);
+    vsnprintf(lastCfgMgrErr, LOG_BUF_LEN_MAX, fmt, ap);
+    va_end(ap);
+
+    printf(lastCfgMgrErr);
+    printf("\n");
+
+    if (logLevel <= DEBUG_ERR)
+        sgnfcc = LOGSIGNIFICANCE_KEY;
+    else
+        sgnfcc = LOGSIGNIFICANCE_GENERAL;
+    
+    logWrite(typ, sgnfcc, lastCfgMgrErr);
+}
+
+const char *getLastCfgMgrErr(void)
+{
+    return (const char *)lastCfgMgrErr;
+}
+
 
 

@@ -13,6 +13,8 @@
  * 2019/09/25    Chenxu        None              File Create
  ****************************************************************************** 
  */
+ #ifndef __CONFIG_H__
+ #define __CONFIG_H__
 
 #define HOST_CX                          1
 #define HOST_ZHANG                       2
@@ -45,5 +47,7 @@
 
 #define VERSION_STRING_LEN_MAX           10
 
-#define LOG_DATA_BASE_FILE_NAME          "../cfgmgrLog/cfgmgrLog.db"
+#define LOG_DATA_BASE_FILE_NAME          "../flashdev/cfgmgrLog.db"
 
+
+#endif

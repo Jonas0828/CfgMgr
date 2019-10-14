@@ -144,38 +144,16 @@ typedef struct
     char logicVersion[VERSION_STRING_LEN_MAX + 1];
 }versionGetResponse;
 
-typedef enum
-{
-    LOGTYPE_USER,
-    LOGTYPE_SYSTEM,
-    LOGTYPE_ALL,
-}logType;
-
-typedef enum
-{
-    LOGSIGNIFICANCE_GENERAL,
-    LOGSIGNIFICANCE_KEY,
-    LOGSIGNIFICANCE_ALL
-}logSignificance;
-
 typedef struct
 {
-    msgLogType logType;
-    msgLogSignificance logSignificance;
+    logType logType;
+    logSignificance logSignificance;
     time_t startTime;
     time_t endTime;
     int start;
     int length;
     int draw;
 }logLookUpRequest;
-
-typedef struct
-{
-    time_t occurTime;
-    logType typ;
-    logSignificance sgnfcc;
-    char content[LOG_BUF_LEN_MAX + 1];
-}logElement;
 
 typedef struct
 {

@@ -572,9 +572,9 @@ static int logLookUp(msg *m)
     if (strstr(LogType, "all"))
         logLookUpCtrl->logType = LOGTYPE_ALL;
     else if (strstr(LogType, "user"))
-        logLookUpCtrl->logType = LOGTYPE_USER;
+        logLookUpCtrl->logType = USER;
     else if (strstr(LogType, "system"))
-        logLookUpCtrl->logType = LOGTYPE_SYSTEM;
+        logLookUpCtrl->logType = SYSTEM;
     else
     {
         CGIDEBUG ("LogType[%s] invalid\n", LogType);
@@ -650,27 +650,27 @@ static void confirm2json (msg *m)
     fprintf(cgiOut, "}");
 }
 
-static in_addr_t getNetIp(char *netName)
-{
-    int sock;    
-    int res;    
-    struct ifreq ifr;     
+//static in_addr_t getNetIp(char *netName)
+//{
+//    int sock;    
+//    int res;    
+//    struct ifreq ifr;     
 
-    sock = socket(AF_INET, SOCK_STREAM, 0);    
-    strcpy(ifr.ifr_name, netName);    
-    res = ioctl(sock, SIOCGIFADDR, &ifr);     
+//    sock = socket(AF_INET, SOCK_STREAM, 0);    
+//    strcpy(ifr.ifr_name, netName);    
+//    res = ioctl(sock, SIOCGIFADDR, &ifr);     
 //    CGIDEBUG("IP: %s\n",inet_ntoa(((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr));     
 
-    return ((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr;
-}
+//    return ((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr;
+//}
 
 static void fileLookUpResp2json(msg *m)
 {
     int i;
     char buffer[50];
-    struct hostent *hent;
+//    struct hostent *hent;
     fileLookUpResponse *resp = (fileLookUpResponse *)m->data;
-    in_addr_t hostAddr;
+//    in_addr_t hostAddr;
 
     cgiHeaderContentType("text/html");
     
@@ -700,7 +700,7 @@ static void fileUpLoadResp2http(msg *m)
 {
     char fileName[50];
     char buffer[512];
-    fileUpLoadResponse *resp = (fileLookUpResponse *)m->data;
+    fileUpLoadResponse *resp = (fileUpLoadResponse *)m->data;
     struct stat s;
     FILE * fp;
     int len;
@@ -711,10 +711,10 @@ static void fileUpLoadResp2http(msg *m)
 //    cgiHeaderContentType("text/html;charset=UTF-8");
     cgiHeaderContentType("application/octet-stream");
     fprintf(cgiOut, "Content-Disposition:filename=\"%s\"", resp->fileName);
-    fprintf(cgiOut, "Content-Length:%d", s.st_size);
+    fprintf(cgiOut, "Content-Length:%d", (int)s.st_size);
     
 
-    if (fp = fopen(fileName, "r"))
+    if ((fp = fopen(fileName, "r")) != NULL)
     {
         while((len = fread(buffer, sizeof(buffer), 1, fp)) > 0)
         {
@@ -736,7 +736,7 @@ static void sysTimeGetResp2json(msg *m)
     cgiHeaderContentType("text/html");
     
     time2format(resp->currentTime, fmt);    
-    fprintf(cgiOut, "{\"currentTime\":\"%d\"}\r\n", fmt);
+    fprintf(cgiOut, "{\"currentTime\":\"%s\"}\r\n", fmt);
 }
 
 static void getVersionResp2json(msg *m)
@@ -755,9 +755,7 @@ static void logLookUpResp2json(msg *m)
 {
     int i;
     char buffer[50];
-    struct hostent *hent;
     logLookUpResponse *resp = (logLookUpResponse *)m->data;
-    in_addr_t hostAddr;
 
     cgiHeaderContentType("text/html");
     
@@ -769,12 +767,12 @@ static void logLookUpResp2json(msg *m)
     for (i = 0; i < resp->length; i++)
     {
         time2format(resp->elements[i].occurTime, buffer);
-        fprintf(cgiOut, "\"LogTime\":\"%s\",\r\n", buffer);
-        fprintf(cgiOut, "{\"LogType\":\"%s\",\r\n", 
-            (resp->elements[i].typ == LOGTYPE_SYSTEM) ? "system":"user";
+        fprintf(cgiOut, "{\"LogTime\":\"%s\",\r\n", buffer);
+        fprintf(cgiOut, "\"LogType\":\"%s\",\r\n", 
+            (resp->elements[i].typ == SYSTEM) ? "system":"user");
         fprintf(cgiOut, "\"Significance\":\"%s\",\r\n", 
             (resp->elements[i].sgnfcc == LOGSIGNIFICANCE_GENERAL) ? "genarl":"key");
-        fprintf(cgiOut, "\"content\":\"%s\",\r\n", resp->elements[i].content);
+        fprintf(cgiOut, "\"content\":\"%s\"}\r\n", resp->elements[i].content);
         if (i != (resp->length - 1))
             fprintf(cgiOut, ",");
     }
