@@ -48,6 +48,7 @@
 #define VERSION_STRING_LEN_MAX           10
 
 #define LOG_DATA_BASE_FILE_NAME          "../flashdev/cfgmgrLog.db"
+#define LOG_EXPORT_FILE_NAME             "../tmp/logSearchResult.txt"
 
 
 #endif

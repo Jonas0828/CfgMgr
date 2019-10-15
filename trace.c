@@ -23,6 +23,7 @@
 #include <config.h>
 #include <pthread.h>
 #include <assert.h>
+#include <share.h>
 
 
 #define LOG_LOCK 	    		pthread_mutex_lock(&logMutex)
@@ -48,13 +49,13 @@ static sqlite3 *logOpen(char *fileName)
     result = sqlite3_open(fileName, &db);  
 	if(result != SQLITE_OK)
 	{
-		trace(DEBUG_ERR, SYSTEM, "Can't open datebase(sqlite_errmsg : %s)\n", sqlite3_errmsg(db));
+		printf("Can't open datebase(sqlite_errmsg : %s)\n", sqlite3_errmsg(db));
 		return NULL;
 	}
 	result = sqlite3_exec(db, sql,0,0, &errmsg);
 
 	if(result != SQLITE_OK)
-		trace(DEBUG_ERR, "warning:Create table fail! May table \
+		printf("warning:Create table fail! May table \
 		    logtable already result[%d] errmsg[%s].\n", result,  errmsg);
 
 	return db;
@@ -96,54 +97,80 @@ Write_Err:
 	LOG_UNLOCK;
 }
 
-int logRequest(time_t s, time_t e, logType typ, 
-    logSignificance sgnfcc, int start, logElement *pElements, int elementMax)
+static char **logSelect(time_t s, time_t e, logType typ, logSignificance sgnfcc, int *nrow, int *ncol)
 {
     sqlite3 *db;
-	char sql[200];
-	int result;
-	char *errmsg = NULL;
-	int nrow = 0, ncol = 0, i, element;
-	char **table;
+    char sql[200];
+    int result;
+    char *errmsg = NULL;
+    char **table = NULL;
 
-	LOG_LOCK;
+    *nrow = 0;
+    *ncol = 0;
     
-	if(NULL == (db = logOpen(LOG_DATA_BASE_FILE_NAME)))
-	{
-	    printf("logOpen %s failed\n", LOG_DATA_BASE_FILE_NAME);
-		return -1;
-	}
+    LOG_LOCK;
+    
+    if(NULL == (db = logOpen(LOG_DATA_BASE_FILE_NAME)))
+    {
+        printf("logOpen %s failed\n", LOG_DATA_BASE_FILE_NAME);
+        goto logSelectExit;
+    }
     
     if ((typ != LOGTYPE_ALL) && (sgnfcc != LOGSIGNIFICANCE_ALL))
-    	sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'\
-    	    and LogType=%d and Significance=%d", (int)s, (int)e, (int)typ, sgnfcc);
+        sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'\
+            and LogType=%d and Significance=%d", (int)s, (int)e, (int)typ, sgnfcc);
     else if((typ == LOGTYPE_ALL) && (sgnfcc != LOGSIGNIFICANCE_ALL))
         sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'\
-    	    and Significance=%d", (int)s, (int)e, (int)sgnfcc);
+            and Significance=%d", (int)s, (int)e, (int)sgnfcc);
     else if((typ != LOGTYPE_ALL) && (sgnfcc == LOGSIGNIFICANCE_ALL))
         sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'\
-    	    and LogType=%d", (int)s, (int)e, (int)typ);
+            and LogType=%d", (int)s, (int)e, (int)typ);
     else
     {
         sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'", (int)s, (int)e);           
     }
-
-//    printf("sql : %s\n", sql);
     
-	result = sqlite3_exec(db,sql,0,0,&errmsg);
+    result = sqlite3_exec(db,sql,0,0,&errmsg);
     if(result != SQLITE_OK) 
-	{
-		printf("%s failed, result[%d] errmsg[%s]\n", sql, result, errmsg);
-		goto logRequestExit;
-	}
-	sqlite3_get_table(db,sql,&table,&nrow,&ncol,&errmsg);
-//	printf("nrow = %d, ncol = %d\n", nrow, ncol);
-//    if (ncol != 4)
-//    {
-//        printf("ncol != 4, invalid !!!\n");
-//		goto logRequestExit;
-//    }
-//	printf("number of records = %d\n\n", nrow);
+    {
+        printf("%s failed, result[%d] errmsg[%s]\n", sql, result, errmsg);
+        goto logSelectExit;
+    }
+    
+    sqlite3_get_table(db,sql,&table,nrow,ncol,&errmsg);
+
+logSelectExit:
+    if (db)
+    {
+        logClose(db);
+    }
+    
+    LOG_UNLOCK;
+    
+    if(nrow == 0)
+    {
+        if (table)
+        {
+            sqlite3_free_table(table);
+        }
+        return NULL;
+    }
+    else
+        return table;
+}
+
+
+int logRequest(time_t s, time_t e, logType typ, 
+    logSignificance sgnfcc, int start, logElement *pElements, int elementMax)
+{
+	int nrow = 0, ncol = 0, i, element;
+	char **table = NULL;
+
+    if (NULL == (table = logSelect(s, e, typ, sgnfcc, &nrow, &ncol)))
+    {
+        goto logRequestExit;
+    }
+
 	for(i = 1 + start, element = 0; (i < nrow+1) && (element < elementMax); i++, element++) 
 	{
 //	    printf("%-10s    %-3s    %-3s    %-40s\n", 
@@ -158,12 +185,59 @@ int logRequest(time_t s, time_t e, logType typ,
         nrow--;
 
 logRequestExit:
-	sqlite3_free_table(table);
-	logClose(db);
-	LOG_UNLOCK;
+    if (table)
+    {
+    	sqlite3_free_table(table);
+    }
     
 	return (nrow);
 }
+
+int logRequestExport(time_t s, time_t e, logType typ, logSignificance sgnfcc)
+{
+	int nrow = 0, ncol = 0, i = 0;
+	char **table = NULL;
+    FILE *fp;
+    char timeFmt[50];
+    logElement log;
+
+    if (NULL == (fp = fopen(LOG_EXPORT_FILE_NAME, "w")))
+        goto logRequestExportExit;
+
+    if (NULL == (table = logSelect(s, e, typ, sgnfcc, &nrow, &ncol)))
+        goto logRequestExportExit;
+
+    fprintf(fp, "%-30s%-10s%-20s%-50s\r\n", table[0], table[1], table[2], table[3]);
+    fprintf(fp, "------------------------------------------------------------------------------------\r\n");
+	for(i = 1; i < nrow+1; i++) 
+	{
+        log.occurTime = (time_t)atoi(table[i*ncol+0]);
+        time2format(log.occurTime, timeFmt);
+        log.typ = (logType)atoi(table[i*ncol+1]);
+        log.sgnfcc = (logSignificance)atoi(table[i*ncol+2]);
+
+        fprintf(fp, "%-30s%-10s%-10s%-50s\r\n", timeFmt, 
+            (log.typ == USER) ? "user" : "system",
+            (log.sgnfcc == LOGSIGNIFICANCE_GENERAL) ? "genarl" : "key",
+            table[i*ncol+3]);
+	}
+
+    if(nrow > 0)
+        nrow--;
+
+logRequestExportExit:
+    if (table)
+    {
+    	sqlite3_free_table(table);
+    }
+    if (fp)
+    {
+        fclose(fp);
+    }
+    
+	return (nrow);
+}
+
 
 void logInit( void )
 {

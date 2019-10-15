@@ -1,6 +1,6 @@
 include ./config.mk
 
-OBJS = cfgMgr.o message.o trace.o web.o ping.o
+OBJS = cfgMgr.o message.o trace.o web.o ping.o share.o
 
 CfgMgr : $(OBJS)
 	$(CC) $(OBJS) -o $@  $(LIBS)

@@ -36,8 +36,8 @@
 #include <message.h>
 #include <assert.h>
 #include <mxml.h>
-#include <share.c>
 #include <version.h>
+#include <share.h>
 
 #define ETHER_ADDR_LEN    6
 #define UP    1
@@ -1298,37 +1298,76 @@ static cfgMgrStatus doLogLookUp(msg *in, msg *out)
 
     memset(out, 0, sizeof(msg));
 
-    /** file look up */
-#if 0
-    /** TODO */
-#else
-{
-    time_t ti;
-    char timeFmt[30];
-
-//    trace(DEBUG_INFO, USER, "start time %d endtime %d", (int)req->startTime, (int)req->endTime);
-    
-//    for (i = 0, ti = req->startTime + req->start; (i < recordsTotal) && (i < req->length); i++, ti++)
-//    {
-//        resp->elements[i].typ = USER;
-//        resp->elements[i].occurTime = ti;
-//        resp->elements[i].sgnfcc = LOGSIGNIFICANCE_GENERAL;
-//        snprintf(resp->elements[i].content, LOG_BUF_LEN_MAX, "Test log %d", i+1);
-//    }
     resp->recordsTotal = logRequest(req->startTime, req->endTime, req->logType,
         req->logSignificance, req->start, resp->elements, MIN(PAGE_RECORDS_MAX, req->length));
     resp->draw = req->draw;
     resp->length= (resp->recordsTotal > 0) ? MIN(PAGE_RECORDS_MAX, req->length) : 0;
-}
+
     out->type = MSGTYPE_LOGLOOKUP_RESPONSE;
-#endif
 
     trace(DEBUG_INFO, USER, "Log Look Up succ");
 
-//doNetFilterExit:
+    return status;
+}
+
+static cfgMgrStatus doLogExport(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    logExportRequest *req = (logExportRequest *)in->data;
+    logExportResponse *resp = (logExportResponse *)out->data;    
+
+    trace(DEBUG_INFO, USER, "Log Export start");
+
+    memset(out, 0, sizeof(msg));
+
+    resp->recordsTotal = logRequestExport(req->startTime, req->endTime, req->logType,req->logSignificance);
+    strncpy(resp->logSearchResult, "tmp/logSearchResult.txt", sizeof(resp->logSearchResult));
+    
+    out->type = MSGTYPE_LOGEXPORT_RESPONSE;
+
+    trace(DEBUG_INFO, USER, "Log Export succ");
 
     return status;
 }
+
+static cfgMgrStatus doDiskInfo(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    diskInfoResponse * resp = (diskInfoResponse *)out->data;
+
+    trace(DEBUG_INFO, USER, "Disk Info start");
+
+    memset(out, 0, sizeof(msg));
+
+    //TODO
+
+    out->type = MSGTYPE_DISKINFO_RESPONSE;
+
+    trace(DEBUG_INFO, USER, "Disk Info succ");
+
+    return status;
+}
+
+static cfgMgrStatus doSystemInfo(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    systemInfoResponse * resp = (systemInfoResponse *)out->data;
+
+    trace(DEBUG_INFO, USER, "System Info start");
+
+    memset(out, 0, sizeof(msg));
+
+    //TODO
+
+    out->type = MSGTYPE_SYSTEMINFO_RESPONSE;
+
+    trace(DEBUG_INFO, USER, "System Info succ");
+
+    return status;
+}
+
+
+
 
 
 
@@ -1432,7 +1471,15 @@ static void webProcess (void)
             case MSGTYPE_LOGLOOKUP_REQUEST:
                 status = doLogLookUp(&recvMsg, &sendMsg);
                 break;
-            
+            case MSGTYPE_LOGEXPORT_REQUEST:
+                status = doLogExport(&recvMsg, &sendMsg);
+                break;            
+            case MSGTYPE_DISKINFO_REQUEST:
+                status = doDiskInfo(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_SYSTEMINFO_REQUEST:
+                status = doSystemInfo(&recvMsg, &sendMsg);
+                break;
             default:
                 trace(DEBUG_ERR, USER, "Operation not support!!!");
                 status = CFGMGR_NOT_SUPPORT;

@@ -36,23 +36,27 @@ typedef enum
     MSGTYPE_NETFILTER,
     MSGTYPE_FILELOOKUP_REQUEST,
     MSGTYPE_FILEUPLOAD_REQUEST,
-    MSGTYPE_DISKINFO,
+    MSGTYPE_DISKINFO_REQUEST,
     MSGTYPE_NORMALUSERMGR_REQUEST,
     MSGTYPE_SUPERUSERMGR_REQUEST,
-    MSGTYPE_SYSTEMINFO,
+    MSGTYPE_SYSTEMINFO_REQUEST,
     MSGTYPE_SYSTIMESET_REQUEST,
     MSGTYPE_SYSTIMEGET_REQUEST,
     MSGTYPE_GETVERSION_REQUEST,
     MSGTYPE_FACTORYRESET_REQUEST,
     MSGTYPE_REBOOT_REQUEST,
     MSGTYPE_LOGLOOKUP_REQUEST,
+    MSGTYPE_LOGEXPORT_REQUEST,
     
-    
+
     MSGTYPE_FILELOOKUP_RESPONSE,
     MSGTYPE_FILEUPLOAD_RESPONSE,
+    MSGTYPE_DISKINFO_RESPONSE,
+    MSGTYPE_SYSTEMINFO_RESPONSE,
     MSGTYPE_SYSTIMEGET_RESPONSE,
     MSGTYPE_GETVERSION_RESPONSE,
     MSGTYPE_LOGLOOKUP_RESPONSE,
+    MSGTYPE_LOGEXPORT_RESPONSE
 }msgType;
 
 typedef enum
@@ -162,6 +166,66 @@ typedef struct
     int draw;
     logElement elements[PAGE_RECORDS_MAX];
 }logLookUpResponse;
+
+typedef struct
+{
+    logType logType;
+    logSignificance logSignificance;
+    time_t startTime;
+    time_t endTime;
+}logExportRequest;
+
+typedef struct
+{
+    int recordsTotal;
+    char logSearchResult[FILE_NAME_LEN_MAX + 1];
+}logExportResponse;
+
+
+#define DISK_INFO_STRING_LEN_MAX 30
+typedef struct
+{
+    char formFactor[DISK_INFO_STRING_LEN_MAX];
+    char rate[DISK_INFO_STRING_LEN_MAX];
+    char cacheBufferSize[DISK_INFO_STRING_LEN_MAX];
+    char modelNumber[DISK_INFO_STRING_LEN_MAX];
+    char sn[DISK_INFO_STRING_LEN_MAX];
+    char firwareRevision[DISK_INFO_STRING_LEN_MAX];
+    char temp[DISK_INFO_STRING_LEN_MAX];
+    char size[DISK_INFO_STRING_LEN_MAX];
+    char used[DISK_INFO_STRING_LEN_MAX];
+    char avail[DISK_INFO_STRING_LEN_MAX];
+}diskInfoResponse;
+
+typedef enum
+{
+    LINK_DOWN = 0,
+    LINK_UP
+}linkStatus;
+
+typedef struct
+{
+    linkStatus linkStat;
+    int linkSpeed;
+    int nRecvPackages;
+    int nSendPackages;
+}lanStatus;
+
+#define SYSTEM_INFO_STRING_LEN_MAX 30
+typedef struct 
+{
+    char hwVer[SYSTEM_INFO_STRING_LEN_MAX];
+    char sn[SYSTEM_INFO_STRING_LEN_MAX];
+    char cfgMgrVersion[VERSION_STRING_LEN_MAX + 1];
+    time_t cfgMgrLastUpdateTime;
+    char logicVersion[VERSION_STRING_LEN_MAX + 1];
+    time_t logicLastUpdateTime;
+    time_t currentTime;
+    int runningSec;
+    lanStatus lan1Status;
+    lanStatus lan2Status;
+}systemInfoResponse;
+
 
 typedef struct
 {

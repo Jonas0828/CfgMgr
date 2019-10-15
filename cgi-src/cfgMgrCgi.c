@@ -28,8 +28,6 @@
 #include <message.h>
 #include <time.h>
 #include <cfgMgrCgi.h>
-#include <../message.c>
-#include <../share.c>
 #include <unistd.h>
 #include <netdb.h>
 #include <config.h>
@@ -41,6 +39,8 @@
 #include <linux/sockios.h>
 #include <net/route.h>
 #include <net/if_arp.h>
+#include <message.c>
+#include <share.c>
 
 
 #define stringLenZeroChkReturn(str)\
@@ -409,7 +409,7 @@ static int fileUpLoad(msg *m)
 
 static int diskInfo(msg *m)
 {
-    m->type = MSGTYPE_DISKINFO;
+    m->type = MSGTYPE_DISKINFO_REQUEST;
     
     return 0;
 }
@@ -486,10 +486,9 @@ static int superUserMgr(msg *m)
     return 0;
 }
 
-
 static int systemInfo(msg *m)
 {
-    m->type = MSGTYPE_SYSTEMINFO;
+    m->type = MSGTYPE_SYSTEMINFO_REQUEST;
     
     return 0;
 }
@@ -603,6 +602,59 @@ static int logLookUp(msg *m)
     return 0;
 }
 
+static int logExport(msg *m)
+{
+    logExportRequest *logLookUpCtrl = (logExportRequest *)m->data;
+    char LogType[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    char Significance[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    char StartTime[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    char EndTime[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+
+    cgiFormString("LogType", LogType, FORM_ELEMENT_STRING_LEN_MAX);
+    cgiFormString("Significance", Significance, FORM_ELEMENT_STRING_LEN_MAX);
+    cgiFormString("StartTime", StartTime, FORM_ELEMENT_STRING_LEN_MAX);
+    cgiFormString("EndTime", EndTime, FORM_ELEMENT_STRING_LEN_MAX);
+
+    stringLenZeroChkReturn(LogType);
+    stringLenZeroChkReturn(Significance);
+    stringLenZeroChkReturn(StartTime);
+    stringLenZeroChkReturn(EndTime);
+
+    if (strstr(LogType, "all"))
+        logLookUpCtrl->logType = LOGTYPE_ALL;
+    else if (strstr(LogType, "user"))
+        logLookUpCtrl->logType = USER;
+    else if (strstr(LogType, "system"))
+        logLookUpCtrl->logType = SYSTEM;
+    else
+    {
+        CGIDEBUG ("LogType[%s] invalid\n", LogType);
+//        CGICASSERT(0);
+        return -1;
+    }
+
+    if (strstr(Significance, "all"))
+        logLookUpCtrl->logSignificance = LOGSIGNIFICANCE_ALL;
+    else if (strstr(Significance, "general"))
+        logLookUpCtrl->logSignificance = LOGSIGNIFICANCE_GENERAL;
+    else if (strstr(Significance, "key"))
+        logLookUpCtrl->logSignificance = LOGSIGNIFICANCE_KEY;
+    else
+    {
+        CGIDEBUG ("Significance[%s] invalid\n", Significance);
+//        CGICASSERT(0);
+        return -1;
+    }
+
+    logLookUpCtrl->startTime = format2time(StartTime);
+    logLookUpCtrl->endTime = format2time(EndTime);
+
+    m->type = MSGTYPE_LOGEXPORT_REQUEST;
+    
+    return 0;
+}
+
+
 static const formMethod formMethodTable[] = 
 {
     {"Function_Login", login},
@@ -623,6 +675,7 @@ static const formMethod formMethodTable[] =
     {"Function_FactoryReset", factoryReset},
     {"Function_Reboot", reboot},
     {"Function_LogLookUp", logLookUp},
+    {"Function_LogExport", logExport},
 };
 
 static formMethod *formMethodLookUp (char *formName)
@@ -780,6 +833,64 @@ static void logLookUpResp2json(msg *m)
     fprintf(cgiOut, "]}");
 }
 
+static void logExportResp2json(msg *m)
+{
+    logExportResponse *resp = (logExportResponse *)m->data;
+
+    cgiHeaderContentType("text/html");
+    
+    fprintf(cgiOut, "{\r\n");
+    fprintf(cgiOut, "\"recordsFiltered\":\"%d\",\r\n", resp->recordsTotal);
+    fprintf(cgiOut, "\"url\":\"%s\"\r\n", resp->logSearchResult);
+    fprintf(cgiOut, "}");
+}
+
+static void diskInfoResp2json(msg *m)
+{
+    diskInfoResponse *resp = (diskInfoResponse *)m->data;
+
+    cgiHeaderContentType("text/html");
+    
+    fprintf(cgiOut, "{\r\n");
+    fprintf(cgiOut, "\"Form Factor\":\"%s\",\r\n", resp->formFactor);
+    fprintf(cgiOut, "\"Nominal Media Rotation Rate\":\"%s\",\r\n", resp->rate);
+    fprintf(cgiOut, "\"cache buffer size\":\"%s\",\r\n", resp->rate);
+    fprintf(cgiOut, "\"Model Number\":\"%s\",\r\n", resp->modelNumber);
+    fprintf(cgiOut, "\"Serial Numbe\":\"%s\",\r\n", resp->sn);
+    fprintf(cgiOut, "\"Firmware Revision\":\"%s\",\r\n", resp->firwareRevision);
+    fprintf(cgiOut, "\"Temperature\":\"%s\",\r\n", resp->temp);
+    fprintf(cgiOut, "\"Size\":\"%s\",\r\n", resp->size);
+    fprintf(cgiOut, "\"Used\":\"%s\",\r\n", resp->used);
+    fprintf(cgiOut, "\"Avail\":\"%s\"\r\n", resp->avail);
+    fprintf(cgiOut, "}");
+}
+
+static void systemInfoResp2json(msg *m)
+{
+    systemInfoResponse *resp = (systemInfoResponse *)m->data;
+
+    cgiHeaderContentType("text/html");
+    
+    fprintf(cgiOut, "{\r\n");
+    fprintf(cgiOut, "\"HwVer\":\"%s\",\r\n", resp->hwVer);
+    fprintf(cgiOut, "\"SN\":\"%s\",\r\n", resp->sn);
+    fprintf(cgiOut, "\"CfgMgrVersion\":\"%s\",\r\n", resp->cfgMgrVersion);
+    fprintf(cgiOut, "\"CfgMgrLastUpdateTime\":\"%s\",\r\n", time2format2(resp->cfgMgrLastUpdateTime));
+    fprintf(cgiOut, "\"LogicVersion\":\"%s\",\r\n", resp->logicVersion);
+    fprintf(cgiOut, "\"LogicLastUpdateTime\":\"%s\",\r\n", time2format2(resp->logicLastUpdateTime));
+    fprintf(cgiOut, "\"CurrentTime\":\"%s\",\r\n", time2format2(resp->currentTime));
+    fprintf(cgiOut, "\"RunningTime\":\"%d\",\r\n", resp->runningSec);
+    fprintf(cgiOut, "\"Lan1LinkStatus\":\"%d\",\r\n", resp->lan1Status.linkStat);
+    fprintf(cgiOut, "\"Lan1LinkSpeed\":\"%d\",\r\n", resp->lan1Status.linkSpeed);
+    fprintf(cgiOut, "\"Lan1RecvPackages\":\"%d\",\r\n", resp->lan1Status.nRecvPackages);
+    fprintf(cgiOut, "\"Lan1SendPackages\":\"%d\",\r\n", resp->lan1Status.nSendPackages);
+    fprintf(cgiOut, "\"Lan2LinkStatus\":\"%d\",\r\n", resp->lan2Status.linkStat);
+    fprintf(cgiOut, "\"Lan2LinkSpeed\":\"%d\",\r\n", resp->lan2Status.linkSpeed);
+    fprintf(cgiOut, "\"Lan2RecvPackages\":\"%d\",\r\n", resp->lan2Status.nRecvPackages);
+    fprintf(cgiOut, "\"Lan2SendPackages\":\"%d\"\r\n", resp->lan2Status.nSendPackages);
+    fprintf(cgiOut, "}");
+}
+
 
 static void msg2json(msg *m)
 {
@@ -803,6 +914,16 @@ static void msg2json(msg *m)
         case MSGTYPE_LOGLOOKUP_RESPONSE:
             logLookUpResp2json(m);
             break;
+        case MSGTYPE_LOGEXPORT_RESPONSE:
+            logExportResp2json(m);
+            break;
+        case MSGTYPE_DISKINFO_RESPONSE:
+            diskInfoResp2json(m);
+            break;
+        case MSGTYPE_SYSTEMINFO_RESPONSE:
+            systemInfoResp2json(m);
+            break;
+        
         default:
             break;
     }

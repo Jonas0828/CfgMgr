@@ -13,8 +13,15 @@
  * 2019/10/08    Chenxu        None              File Create
  ****************************************************************************** 
  */
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
-static int macString2Hex (char *str, unsigned char *mac)
+static char timeFormat[40];
+ 
+
+int macString2Hex (char *str, unsigned char *mac)
 {
     int i;
     int len;
@@ -32,7 +39,7 @@ static int macString2Hex (char *str, unsigned char *mac)
 	return 0;
 }
 
-static int macHex2String (unsigned char *mac, char *str)
+int macHex2String (unsigned char *mac, char *str)
 {
     int i;
 
@@ -48,7 +55,7 @@ static int macHex2String (unsigned char *mac, char *str)
 /*
  * YYYY-MM-DD HH:MM:SS to time_t
  */
-static time_t format2time(char *format)
+time_t format2time(char *format)
 {
     struct tm daytime;
 
@@ -62,7 +69,7 @@ static time_t format2time(char *format)
 	return (mktime(&daytime));
 }
 
-static void time2format(time_t ti, char *fmt)
+void time2format(time_t ti, char *fmt)
 {
     struct tm daytime;
     
@@ -77,7 +84,7 @@ static void time2format(time_t ti, char *fmt)
         daytime.tm_sec);
 }
 
-static void time2format1(time_t ti, char *fmt)
+void time2format1(time_t ti, char *fmt)
 {
     struct tm daytime;
     
@@ -91,5 +98,23 @@ static void time2format1(time_t ti, char *fmt)
         daytime.tm_min,
         daytime.tm_sec);
 }
+
+const char *time2format2(time_t ti)
+{
+    struct tm daytime;
+    
+    localtime_r(&ti, &daytime);
+
+	sprintf(timeFormat, "%04d-%02d-%02d %02d:%02d:%02d",
+        daytime.tm_year + 1900,
+        daytime.tm_mon + 1,
+        daytime.tm_mday,
+        daytime.tm_hour,
+        daytime.tm_min,
+        daytime.tm_sec);
+
+    return (const char *)timeFormat;
+}
+
 
 

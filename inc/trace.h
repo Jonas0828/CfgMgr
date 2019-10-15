@@ -52,6 +52,8 @@ void logInit(void);
 int logRequest(time_t s, time_t e, logType typ, 
     logSignificance sgnfcc, int start, logElement *pElements, int elementMax);
 
+int logRequestExport(time_t s, time_t e, logType typ, logSignificance sgnfcc);
+
 void trace (int logLevel, int typ, const char *fmt, ...);
 
 const char *getLastCfgMgrErr(void);
