@@ -26,7 +26,7 @@
 #define ADMIN_USER_NUM                   1
 #define NORMAL_USER_NUM                  1
 #define USER_NUM                         (ADMIN_USER_NUM + NORMAL_USER_NUM)
-#define WEB_THREAD_STACK_SIZE            (512 *1024)
+#define WEB_THREAD_STACK_SIZE            (2 * 1024 *1024)
 
 #if (HOST == HOST_CX)
 #define NET1_NAME                        "enp0s31f6"

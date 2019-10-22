@@ -117,18 +117,19 @@ static char **logSelect(time_t s, time_t e, logType typ, logSignificance sgnfcc,
     }
     
     if ((typ != LOGTYPE_ALL) && (sgnfcc != LOGSIGNIFICANCE_ALL))
-        sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'\
-            and LogType=%d and Significance=%d", (int)s, (int)e, (int)typ, sgnfcc);
+        sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'"
+            " and LogType='%d' and Significance='%d'", (int)s, (int)e, (int)typ, sgnfcc);
     else if((typ == LOGTYPE_ALL) && (sgnfcc != LOGSIGNIFICANCE_ALL))
-        sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'\
-            and Significance=%d", (int)s, (int)e, (int)sgnfcc);
+        sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'"
+            " and Significance='%d'", (int)s, (int)e, (int)sgnfcc);
     else if((typ != LOGTYPE_ALL) && (sgnfcc == LOGSIGNIFICANCE_ALL))
-        sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'\
-            and LogType=%d", (int)s, (int)e, (int)typ);
+        sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'"
+            " and LogType='%d'", (int)s, (int)e, (int)typ);
     else
     {
         sprintf(sql, "select * from logtable where OccurTime between '%d' and '%d'", (int)s, (int)e);           
     }
+//    printf("sql %s\n", sql);
     
     result = sqlite3_exec(db,sql,0,0,&errmsg);
     if(result != SQLITE_OK) 
@@ -207,7 +208,7 @@ int logRequestExport(time_t s, time_t e, logType typ, logSignificance sgnfcc)
     if (NULL == (table = logSelect(s, e, typ, sgnfcc, &nrow, &ncol)))
         goto logRequestExportExit;
 
-    fprintf(fp, "%-30s%-10s%-20s%-50s\r\n", table[0], table[1], table[2], table[3]);
+    fprintf(fp, "%-25s%-10s%-15s%-50s\r\n", table[0], table[1], table[2], table[3]);
     fprintf(fp, "------------------------------------------------------------------------------------\r\n");
 	for(i = 1; i < nrow+1; i++) 
 	{
@@ -216,7 +217,7 @@ int logRequestExport(time_t s, time_t e, logType typ, logSignificance sgnfcc)
         log.typ = (logType)atoi(table[i*ncol+1]);
         log.sgnfcc = (logSignificance)atoi(table[i*ncol+2]);
 
-        fprintf(fp, "%-30s%-10s%-10s%-50s\r\n", timeFmt, 
+        fprintf(fp, "%-25s%-10s%-15s%-50s\r\n", timeFmt, 
             (log.typ == USER) ? "user" : "system",
             (log.sgnfcc == LOGSIGNIFICANCE_GENERAL) ? "genarl" : "key",
             table[i*ncol+3]);

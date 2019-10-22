@@ -40,7 +40,13 @@
 			fprintf(cgiOut, fmt, ##__VA_ARGS__);\
 			fclose(dout); \
 		}
-
+#define CGIDEBUGINFO(fmt, ...)\
+		{ \
+			FILE *dout; \
+			dout = fopen(CGIDEBUG_FILE_NAME, "a");\
+			fprintf(dout, fmt, ##__VA_ARGS__);\
+			fclose(dout); \
+		}
 #else /* CGICDEBUG */
 #define CGICDEBUGSTART
 #define CGICDEBUGEND

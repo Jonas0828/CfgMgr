@@ -59,6 +59,13 @@
         return -1;\
     }\
 
+#define CGIDEBUGINFOBOUNDARY\
+        CGIDEBUGINFO("------------------------------\n");
+#define CGIDEBUGINFOHEADER\
+    CGIDEBUGINFOBOUNDARY;\
+    CGIDEBUGINFO("functionName                  : %s\n",functionName);
+
+
 typedef struct
 {
     char *formName;
@@ -250,6 +257,13 @@ static int captureParamGet(captureParam *capture, int netNumber)
     stringLenZeroChkReturn(Lan_AutoUpLoadEnable);
     stringLenZeroChkReturn(Lan_AutoUpLoadPath);
 
+    CGIDEBUGINFO("------------------------------\n");
+    CGIDEBUGINFO("functionName              : %s\n",functionName);
+    CGIDEBUGINFO("Lan%d_CaptureServiceStatus  : %s\n", netNumber, Lan_CaptureServiceStatus);
+    CGIDEBUGINFO("Lan%d_AutoUpLoadEnable      : %s\n", netNumber, Lan_AutoUpLoadEnable);
+    CGIDEBUGINFO("Lan%d_AutoUpLoadPath        : %s\n", netNumber, Lan_AutoUpLoadPath);
+    CGIDEBUGINFO("------------------------------\n");
+
     if (strstr(Lan_CaptureServiceStatus, "true"))
         capture->isCapture = TRUE;
     else if (strstr(Lan_CaptureServiceStatus, "false"))
@@ -296,7 +310,7 @@ static int netCapture(msg *m)
         return -1;
     }
 
-    m->type = MSGTYPE_NETCAPTURE;
+    m->type = MSGTYPE_NETCAPTURE_REQUEST;
 
     return 0;
 }
@@ -315,6 +329,10 @@ static int filterParamGet(filterParam *filter, int netNumber)
     }
 
     stringLenZeroChkReturn(Lan_NetFilterServiceStatus);
+    CGIDEBUGINFO("------------------------------\n");
+    CGIDEBUGINFO("functionName                  : %s\n",functionName);
+    CGIDEBUGINFO("Lan%d_NetFilterServiceStatus   : %s\n",netNumber, Lan_NetFilterServiceStatus);
+    CGIDEBUGINFO("------------------------------\n");
 
     if (strstr(Lan_NetFilterServiceStatus, "true"))
         filter->isFilter = TRUE;
@@ -349,7 +367,7 @@ static int netFilter(msg *m)
         return -1;
     }
 
-    m->type = MSGTYPE_NETCAPTURE;
+    m->type = MSGTYPE_NETFILTER_REQUEST;
 
     return 0;
 }
@@ -492,6 +510,19 @@ static int systemInfo(msg *m)
     
     return 0;
 }
+static int lan1StatisticsClear(msg *m)
+{
+    m->type = MSGTYPE_LAN1STATISTICSCLEAR_REQUEST;
+    
+    return 0;
+}
+static int lan2StatisticsClear(msg *m)
+{
+    m->type = MSGTYPE_LAN2STATISTICSCLEAR_REQUEST;
+    
+    return 0;
+}
+
 
 static int systemTimeGet(msg *m)
 {
@@ -508,6 +539,10 @@ static int systemTimeSet(msg *m)
     cgiFormString("CorrectTime", CorrectTime, FORM_ELEMENT_STRING_LEN_MAX);    
     stringLenZeroChkReturn(CorrectTime);
 
+    CGIDEBUGINFOHEADER;
+    CGIDEBUGINFO("CorrectTime                   : %s\n", CorrectTime);
+    CGIDEBUGINFOBOUNDARY;
+
     req->correctTime = format2time(CorrectTime);    
 
     m->type = MSGTYPE_SYSTIMESET_REQUEST;
@@ -518,6 +553,31 @@ static int systemTimeSet(msg *m)
 static int getVersion(msg *m)
 {
     m->type = MSGTYPE_GETVERSION_REQUEST;
+    
+    return 0;
+}
+
+static int adminPasswdConfirm(msg *m)
+{
+    char AdminPasswd[FORM_ELEMENT_STRING_LEN_MAX] = {0};
+    adminPasswdConfirmRequest *req = (adminPasswdConfirmRequest *)m->data;
+   
+    cgiFormString("AdminPasswd", AdminPasswd, FORM_ELEMENT_STRING_LEN_MAX);    
+    stringLenZeroChkReturn(AdminPasswd);
+
+    CGIDEBUGINFOHEADER;
+    CGIDEBUGINFO("AdminPasswd                   : %s\n", AdminPasswd);
+    CGIDEBUGINFOBOUNDARY;
+
+    if (strlen(AdminPasswd) > USR_KEY_LNE_MAX)
+    {
+        CGIDEBUG("AdminPasswd[%s] len > %d !!!\n", AdminPasswd, USR_KEY_LNE_MAX);
+        return -1;
+    }
+
+    strncpy(req->adminPasswd, AdminPasswd, sizeof(req->adminPasswd));
+
+    m->type = MSGTYPE_ADMINPASSWDCOMFIRM_REQUEST;
     
     return 0;
 }
@@ -594,6 +654,17 @@ static int logLookUp(msg *m)
         return -1;
     }
 
+    CGIDEBUGINFO("------------------------------\n");
+    CGIDEBUGINFO("functionName : %s\n",functionName);
+    CGIDEBUGINFO("LogType      : %s\n",LogType);
+    CGIDEBUGINFO("Significance : %s\n", Significance);
+    CGIDEBUGINFO("StartTime    : %s\n", StartTime);
+    CGIDEBUGINFO("EndTime      : %s\n", EndTime);
+    CGIDEBUGINFO("start        : %s\n", start);
+    CGIDEBUGINFO("length       : %s\n", length);
+    CGIDEBUGINFO("draw         : %s\n", draw);
+    CGIDEBUGINFO("------------------------------\n");
+
     logLookUpCtrl->startTime = format2time(StartTime);
     logLookUpCtrl->endTime = format2time(EndTime);
 
@@ -649,10 +720,95 @@ static int logExport(msg *m)
     logLookUpCtrl->startTime = format2time(StartTime);
     logLookUpCtrl->endTime = format2time(EndTime);
 
+    CGIDEBUGINFO("------------------------------\n");
+    CGIDEBUGINFO("functionName : %s\n",functionName);
+    CGIDEBUGINFO("LogType      : %s\n",LogType);
+    CGIDEBUGINFO("Significance : %s\n", Significance);
+    CGIDEBUGINFO("StartTime    : %s\n", StartTime);
+    CGIDEBUGINFO("EndTime      : %s\n", EndTime);
+    CGIDEBUGINFO("------------------------------\n");
+
     m->type = MSGTYPE_LOGEXPORT_REQUEST;
     
     return 0;
 }
+
+static int logClearAll(msg *m)
+{
+    m->type = MSGTYPE_LOGCLEARALL_REQUEST;
+    
+    return 0;
+}
+
+
+static int updateFile(msg *m)
+{
+	cgiFilePtr file;
+	FILE *fd;
+	char name[1024];
+	char path[50]={0};
+	char contentType[1024];
+	int size;
+	int got;
+	char *tmp = NULL;
+    cgiFormResultType ret;
+        
+	if ((ret = cgiFormFileName("UpdateFileName", name, sizeof(name))) != cgiFormSuccess)
+    {
+        CGIDEBUG("updateLogicFile cgiFormFileName get updatefile name failed(ret = %d)!!\n", ret);
+		return -1;
+	}        
+	cgiFormFileSize("UpdateFileName", &size);    
+	cgiFormFileContentType("UpdateFileName", contentType, sizeof(contentType));
+    CGIDEBUGINFO("UpdateFileName : %s\r\nsize : %d\tr\ncontentType : %s.\n", name, size, contentType);
+	if ((ret = cgiFormFileOpen("UpdateFileName", &file)) != cgiFormSuccess)
+    {
+        CGIDEBUG("updateLogicFile cgiFormFileOpen updatefile failed(ret = %d)!!\n", ret);
+		return -1;
+	}
+	/*write file */
+	
+	tmp=(char *)malloc(sizeof(char)*size);
+	strcpy(path , "/tmp/");
+	strcat(path, name);  
+	fd=fopen(path ,"w+");
+	if(fd==NULL)
+	{
+        CGIDEBUG("updateLogicFile fopen %s failed!!\n", path);
+		return -1;
+	}
+	while (cgiFormFileRead(file, tmp, size, &got) == cgiFormSuccess)
+	{
+		fwrite(tmp, size, sizeof(char), fd);
+	}
+	cgiFormFileClose(file);
+	free(tmp);
+	fclose(fd);
+	return 0;
+}
+
+static int updateLogicFile(msg *m)
+{
+    m->type = MSGTYPE_UPDATELOGICFILE_REQUEST;
+    
+    return updateFile(m);
+}
+
+static int updateCfgMgrFile(msg *m)
+{
+    m->type = MSGTYPE_UPDATECFGMGRFILE_REQUEST;
+    
+    return updateFile(m);
+}
+
+static int updateWeb(msg *m)
+{
+    m->type = MSGTYPE_UPDATEWEB_REQUEST;
+    
+    return updateFile(m);
+}
+
+
 
 
 static const formMethod formMethodTable[] = 
@@ -668,14 +824,27 @@ static const formMethod formMethodTable[] =
     {"Function_DiskInfo", diskInfo},
     {"Function_NormalUserMgr", normalUserMgr},
     {"Function_SuperUserMgr", superUserMgr},
+    /** 系统信息 */
     {"Function_SystemInfo", systemInfo},
+    {"Function_Lan1StatisticsClear", lan1StatisticsClear},
+    {"Function_Lan2StatisticsClear", lan2StatisticsClear},
+        
     {"Function_SystemTimeGet", systemTimeGet},
     {"Function_SystemTimeSet", systemTimeSet},
+    /** 高级管理 */
+    {"Function_AdminPasswdConfirm", adminPasswdConfirm},
     {"Function_GetVersion", getVersion},
+    {"Function_UpdateLogicFile", updateLogicFile},
+    {"Function_UpdateCfgMgrFile", updateCfgMgrFile},
+    {"Function_UpdateWeb", updateWeb},
+    
     {"Function_FactoryReset", factoryReset},
     {"Function_Reboot", reboot},
+    /** 系统日志 */
     {"Function_LogLookUp", logLookUp},
     {"Function_LogExport", logExport},
+    {"Function_LogClearAll", logClearAll},
+    
 };
 
 static formMethod *formMethodLookUp (char *formName)
@@ -852,12 +1021,12 @@ static void diskInfoResp2json(msg *m)
     cgiHeaderContentType("text/html");
     
     fprintf(cgiOut, "{\r\n");
-    fprintf(cgiOut, "\"Form Factor\":\"%s\",\r\n", resp->formFactor);
-    fprintf(cgiOut, "\"Nominal Media Rotation Rate\":\"%s\",\r\n", resp->rate);
-    fprintf(cgiOut, "\"cache buffer size\":\"%s\",\r\n", resp->rate);
-    fprintf(cgiOut, "\"Model Number\":\"%s\",\r\n", resp->modelNumber);
-    fprintf(cgiOut, "\"Serial Numbe\":\"%s\",\r\n", resp->sn);
-    fprintf(cgiOut, "\"Firmware Revision\":\"%s\",\r\n", resp->firwareRevision);
+    fprintf(cgiOut, "\"FormFactor\":\"%s\",\r\n", resp->formFactor);
+    fprintf(cgiOut, "\"NominalMediaRotationRate\":\"%s\",\r\n", resp->rate);
+    fprintf(cgiOut, "\"cCacheBufferSize\":\"%s\",\r\n", resp->rate);
+    fprintf(cgiOut, "\"ModelNumber\":\"%s\",\r\n", resp->modelNumber);
+    fprintf(cgiOut, "\"SerialNumber\":\"%s\",\r\n", resp->sn);
+    fprintf(cgiOut, "\"FirmwareRevision\":\"%s\",\r\n", resp->firwareRevision);
     fprintf(cgiOut, "\"Temperature\":\"%s\",\r\n", resp->temp);
     fprintf(cgiOut, "\"Size\":\"%s\",\r\n", resp->size);
     fprintf(cgiOut, "\"Used\":\"%s\",\r\n", resp->used);

@@ -72,6 +72,8 @@ static cfgMgrStatus paramLoad(param *p)
 		*node;
 	char *attr_value;
 
+    memset(p, 0, sizeof(param));
+
 	if(NULL == (fp = fopen(CONFIG_FILE_NAME, "r")))
 	{
 		trace(DEBUG_ERR, SYSTEM, "fopen %s failed", CONFIG_FILE_NAME);
@@ -161,13 +163,15 @@ static cfgMgrStatus paramLoad(param *p)
         trace(DEBUG_INFO, SYSTEM, "Lan1_AutoUpLoadEnable %s", p->lan1.capture.isCapture ? "true":"false");
 		/** Lan1_AutoUpLoadPath */
 		Lan1_AutoUpLoadPath = mxmlFindElement(Lan1, Lan1, (const char *)"Lan1_AutoUpLoadPath", NULL, NULL, MXML_DESCEND);
-		assert(Lan1_AutoUpLoadPath);
+        assert(Lan1_AutoUpLoadPath);        
 		node = mxmlGetLastChild(Lan1_AutoUpLoadPath);
-		assert(node);
+		if(node)
+        {
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		strncpy(p->lan1.capture.autoUpLoadPath, attr_value, sizeof(p->lan1.capture.autoUpLoadPath));
-        trace(DEBUG_INFO, SYSTEM, "Lan1_AutoUpLoadPath %s", p->lan1.capture.autoUpLoadPath);
+        }
+//        trace(DEBUG_INFO, SYSTEM, "Lan1_AutoUpLoadPath %s", p->lan1.capture.autoUpLoadPath);
 		/** Lan1_NetFilterServiceStatus */
 		Lan1_NetFilterServiceStatus = mxmlFindElement(Lan1, Lan1, (const char *)"Lan1_NetFilterServiceStatus", NULL, NULL, MXML_DESCEND);
 		assert(Lan1_NetFilterServiceStatus);
@@ -259,13 +263,15 @@ static cfgMgrStatus paramLoad(param *p)
         trace(DEBUG_INFO, SYSTEM, "Lan2_AutoUpLoadEnable %s", p->lan2.capture.isCapture ? "true":"false");
 		/** Lan2_AutoUpLoadPath */
 		Lan2_AutoUpLoadPath = mxmlFindElement(Lan2, Lan2, (const char *)"Lan2_AutoUpLoadPath", NULL, NULL, MXML_DESCEND);
-		assert(Lan2_AutoUpLoadPath);
+        assert(Lan2_AutoUpLoadPath);        
 		node = mxmlGetLastChild(Lan2_AutoUpLoadPath);
-		assert(node);
+		if(node)
+        {
 		attr_value = (char * )mxmlGetText(node, &whitespace);
 		assert(attr_value);
 		strncpy(p->lan2.capture.autoUpLoadPath, attr_value, sizeof(p->lan2.capture.autoUpLoadPath));
-        trace(DEBUG_INFO, SYSTEM, "Lan2_AutoUpLoadPath %s", p->lan2.capture.autoUpLoadPath);
+        }
+//        trace(DEBUG_INFO, SYSTEM, "Lan2_AutoUpLoadPath %s", p->lan2.capture.autoUpLoadPath);
 		/** Lan2_NetFilterServiceStatus */
 		Lan2_NetFilterServiceStatus = mxmlFindElement(Lan2, Lan2, (const char *)"Lan2_NetFilterServiceStatus", NULL, NULL, MXML_DESCEND);
 		assert(Lan2_NetFilterServiceStatus);
@@ -1016,7 +1022,7 @@ static cfgMgrStatus doNetFilter(msg *in, msg *out)
 //        goto doNetFilterExit;
 //    }
     
-    memcpy(&pa.lan1.filter, filter, sizeof(captureParam));
+    memcpy(&pa.lan1.filter, filter, sizeof(filterParam));
 
     filter++;
 //    if(CFGMGR_OK != (status = netFilter(filter, 2)))
@@ -1195,12 +1201,12 @@ static cfgMgrStatus doSysTimeGet(msg *in, msg *out)
     cfgMgrStatus status = CFGMGR_OK;
     sysTimeGetResponse *resp = (sysTimeGetResponse *)out->data;
 
-    trace(DEBUG_INFO, USER, "SysTimeGet start");
+//    trace(DEBUG_INFO, USER, "SysTimeGet start");
 
     resp->currentTime = time(NULL);
     out->type = MSGTYPE_SYSTIMEGET_RESPONSE;
 
-    trace(DEBUG_INFO, USER, "SysTimeGet succ");
+//    trace(DEBUG_INFO, USER, "SysTimeGet succ");
 
     return status;
 }
@@ -1222,6 +1228,23 @@ static cfgMgrStatus doSysTimeSet(msg *in, msg *out)
 
     return status;
 }
+
+static cfgMgrStatus doAdminPasswdConfirm(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    adminPasswdConfirmRequest *req = (adminPasswdConfirmRequest *)in->data;
+
+    if (strcmp(pa.users[0].passwd, req->adminPasswd) != 0)
+    {
+        status = CFGMGR_PASSWD_INVALID;
+        trace(DEBUG_INFO, USER, "Passwd Invalid");
+    }
+
+    genConfirmMsg(status, out);
+
+    return status;
+}
+
 
 static int logicVersionGet (void)
 {
@@ -1330,6 +1353,22 @@ static cfgMgrStatus doLogExport(msg *in, msg *out)
     return status;
 }
 
+static cfgMgrStatus doLogClearAll(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+    char cmd[100] = {0};
+
+    trace(DEBUG_INFO, USER, "Log Clear ALL");
+
+    snprintf(cmd, sizeof(cmd), "rm %s", LOG_DATA_BASE_FILE_NAME);
+
+    system(cmd);
+    
+    genConfirmMsg(status, out);
+
+    return status;
+}
+
 static cfgMgrStatus doDiskInfo(msg *in, msg *out)
 {
     cfgMgrStatus status = CFGMGR_OK;
@@ -1338,9 +1377,20 @@ static cfgMgrStatus doDiskInfo(msg *in, msg *out)
     trace(DEBUG_INFO, USER, "Disk Info start");
 
     memset(out, 0, sizeof(msg));
-
+#if 1
+    strncpy(resp->modelNumber, "TOSHIBA DT01ACA100", DISK_INFO_STRING_LEN_MAX);
+    strncpy(resp->sn, "48DY7MRMS", DISK_INFO_STRING_LEN_MAX);
+    strncpy(resp->firwareRevision, "MS2OA810", DISK_INFO_STRING_LEN_MAX);
+    strncpy(resp->cacheBufferSize, "23652 KBytes", DISK_INFO_STRING_LEN_MAX);
+    strncpy(resp->rate, "7200", DISK_INFO_STRING_LEN_MAX);
+    strncpy(resp->formFactor, "3.5 inch", DISK_INFO_STRING_LEN_MAX);
+    strncpy(resp->temp, "36", DISK_INFO_STRING_LEN_MAX);
+    strncpy(resp->size, "1000000000000", DISK_INFO_STRING_LEN_MAX);
+    strncpy(resp->avail, "500000000000", DISK_INFO_STRING_LEN_MAX);
+    strncpy(resp->used, "500000000000", DISK_INFO_STRING_LEN_MAX);
+#else
     //TODO
-
+#endif
     out->type = MSGTYPE_DISKINFO_RESPONSE;
 
     trace(DEBUG_INFO, USER, "Disk Info succ");
@@ -1357,14 +1407,121 @@ static cfgMgrStatus doSystemInfo(msg *in, msg *out)
 
     memset(out, 0, sizeof(msg));
 
+#if 1
+    strncpy(resp->hwVer, "V1.0", SYSTEM_INFO_STRING_LEN_MAX);
+    strncpy(resp->sn, "xxxx-xxxx-xxxx", SYSTEM_INFO_STRING_LEN_MAX);
+    strncpy(resp->cfgMgrVersion, "V1.0", SYSTEM_INFO_STRING_LEN_MAX);
+    strncpy(resp->logicVersion, "V1.0", SYSTEM_INFO_STRING_LEN_MAX);
+    resp->cfgMgrLastUpdateTime = time(NULL);
+    resp->logicLastUpdateTime = time(NULL);
+    resp->currentTime = time(NULL);
+    resp->runningSec = 3600;
+    resp->lan1Status.linkSpeed = 100000000;
+    resp->lan1Status.linkStat = LINK_UP;
+    resp->lan1Status.nRecvPackages = 100;
+    resp->lan1Status.nSendPackages = 100;
+    resp->lan2Status.linkSpeed = 100000000;
+    resp->lan2Status.linkStat = LINK_UP;
+    resp->lan2Status.nRecvPackages = 100;
+    resp->lan2Status.nSendPackages = 100;
+#else
     //TODO
-
+#endif
     out->type = MSGTYPE_SYSTEMINFO_RESPONSE;
 
     trace(DEBUG_INFO, USER, "System Info succ");
 
     return status;
 }
+
+static cfgMgrStatus lanStatisticsClear(int netNumber)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+
+    trace(DEBUG_INFO, USER, "FactoryReset start");
+
+    status  = CFGMGR_NOT_SUPPORT;
+    trace(DEBUG_ERR, SYSTEM, "lanStatisticsClear not support !!!");
+    goto lanStatisticsClearExit;
+    
+lanStatisticsClearExit:    
+    return status;
+}
+
+static cfgMgrStatus doLan1StatisticsClear(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+
+    trace(DEBUG_INFO, USER, "Lan1 Statistics Clear");
+
+    status = lanStatisticsClear(1);
+
+    genConfirmMsg(status, out);
+
+    return status;
+}
+
+static cfgMgrStatus doLan2StatisticsClear(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+
+    trace(DEBUG_INFO, USER, "Lan2 Statistics Clear");
+
+    status = lanStatisticsClear(2);
+
+    genConfirmMsg(status, out);
+
+    return status;
+}
+
+static cfgMgrStatus doUpdateLogicFile(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+
+    trace(DEBUG_INFO, USER, "UpdateLogicFile start");
+
+    //TODO
+
+    trace(DEBUG_INFO, USER, "UpdateLogicFile succ");
+
+//doUpdateLogicFileExit:
+    genConfirmMsg(status, out);
+
+    return status;
+}
+
+static cfgMgrStatus doUpdateCfgMgrFile(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+
+    trace(DEBUG_INFO, USER, "UpdateCfgMgrFile start");
+
+    //TODO
+
+    trace(DEBUG_INFO, USER, "UpdateCfgMgrFile succ");
+
+//doUpdateCfgMgrFileExit:
+    genConfirmMsg(status, out);
+
+    return status;
+}
+
+static cfgMgrStatus doUpdateWeb(msg *in, msg *out)
+{
+    cfgMgrStatus status = CFGMGR_OK;
+
+    trace(DEBUG_INFO, USER, "UpdateWebstart");
+
+    //TODO
+
+    trace(DEBUG_INFO, USER, "UpdateWeb succ");
+
+//doUpdateCfgMgrFileExit:
+    genConfirmMsg(status, out);
+
+    return status;
+}
+
 
 
 
@@ -1435,10 +1592,10 @@ static void webProcess (void)
             case MSGTYPE_NETCONFIGSAVE:                
                 status = doNetConfigSave(&recvMsg, &sendMsg);
                 break;
-            case MSGTYPE_NETCAPTURE:                
+            case MSGTYPE_NETCAPTURE_REQUEST:                
                 status = doNetCapture(&recvMsg, &sendMsg);
                 break;
-            case MSGTYPE_NETFILTER:
+            case MSGTYPE_NETFILTER_REQUEST:
                 status = doNetFilter(&recvMsg, &sendMsg);
                 break;
             case MSGTYPE_FILELOOKUP_REQUEST:
@@ -1458,6 +1615,9 @@ static void webProcess (void)
                 break;
             case MSGTYPE_SYSTIMESET_REQUEST:
                 status = doSysTimeSet(&recvMsg, &sendMsg);
+                break;            
+            case MSGTYPE_ADMINPASSWDCOMFIRM_REQUEST:
+                status = doAdminPasswdConfirm(&recvMsg, &sendMsg);
                 break;
             case MSGTYPE_GETVERSION_REQUEST:
                 status = doVersionGet(&recvMsg, &sendMsg);
@@ -1473,13 +1633,32 @@ static void webProcess (void)
                 break;
             case MSGTYPE_LOGEXPORT_REQUEST:
                 status = doLogExport(&recvMsg, &sendMsg);
-                break;            
+                break;
+            case MSGTYPE_LOGCLEARALL_REQUEST:
+                status = doLogClearAll(&recvMsg, &sendMsg);
+                break;
             case MSGTYPE_DISKINFO_REQUEST:
                 status = doDiskInfo(&recvMsg, &sendMsg);
                 break;
             case MSGTYPE_SYSTEMINFO_REQUEST:
                 status = doSystemInfo(&recvMsg, &sendMsg);
                 break;
+            case MSGTYPE_LAN1STATISTICSCLEAR_REQUEST:
+                status = doLan1StatisticsClear(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_LAN2STATISTICSCLEAR_REQUEST:
+                status = doLan2StatisticsClear(&recvMsg, &sendMsg);
+                break;            
+            case MSGTYPE_UPDATELOGICFILE_REQUEST:
+                status = doUpdateLogicFile(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_UPDATECFGMGRFILE_REQUEST:
+                status = doUpdateCfgMgrFile(&recvMsg, &sendMsg);
+                break;
+            case MSGTYPE_UPDATEWEB_REQUEST:
+                status = doUpdateWeb(&recvMsg, &sendMsg);
+                break;
+            
             default:
                 trace(DEBUG_ERR, USER, "Operation not support!!!");
                 status = CFGMGR_NOT_SUPPORT;
