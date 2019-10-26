@@ -1317,18 +1317,18 @@ static cfgMgrStatus doLogLookUp(msg *in, msg *out)
     logLookUpResponse * resp = (logLookUpResponse *)out->data;
     int recordsTotal, i;
 
-    trace(DEBUG_INFO, USER, "Log Look Up start");
+//    trace(DEBUG_INFO, USER, "Log Look Up start");
 
     memset(out, 0, sizeof(msg));
 
     resp->recordsTotal = logRequest(req->startTime, req->endTime, req->logType,
         req->logSignificance, req->start, resp->elements, MIN(PAGE_RECORDS_MAX, req->length));
     resp->draw = req->draw;
-    resp->length= (resp->recordsTotal > 0) ? MIN(PAGE_RECORDS_MAX, req->length) : 0;
+    resp->length= MIN(req->length, MIN(resp->recordsTotal - req->start, PAGE_RECORDS_MAX));
 
     out->type = MSGTYPE_LOGLOOKUP_RESPONSE;
 
-    trace(DEBUG_INFO, USER, "Log Look Up succ");
+//    trace(DEBUG_INFO, USER, "Log Look Up succ");
 
     return status;
 }
@@ -1438,7 +1438,7 @@ static cfgMgrStatus lanStatisticsClear(int netNumber)
 {
     cfgMgrStatus status = CFGMGR_OK;
 
-    trace(DEBUG_INFO, USER, "FactoryReset start");
+    trace(DEBUG_INFO, USER, "lan%dStatisticsClear start", netNumber);
 
     status  = CFGMGR_NOT_SUPPORT;
     trace(DEBUG_ERR, SYSTEM, "lanStatisticsClear not support !!!");

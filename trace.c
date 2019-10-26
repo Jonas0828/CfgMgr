@@ -79,7 +79,7 @@ static void logWrite(logType typ, logSignificance sgnfcc, char *content)
     LOG_LOCK;
 
 	memset(sql, 0x00, sizeof(sql));
-	sprintf(sql, "insert into logtable values('%d','%d','%d','%s')", 
+	sprintf(sql, "insert into logtable values('%d','%d','%d','%s');", 
 		(int)tinow, (int)typ, (int)sgnfcc, content);
 
     db = logOpen(LOG_DATA_BASE_FILE_NAME);
@@ -90,6 +90,12 @@ static void logWrite(logType typ, logSignificance sgnfcc, char *content)
 		printf("Can't insert into datebase result[%d] errmsg[%s], sql[%s]\n", result,errmsg,sql);
 		goto Write_Err;
 	}
+//    result = sqlite3_complete(sql);
+//    if(result != SQLITE_OK) 
+//	{
+//		printf("sqlite3_complete err : result[%d] errmsg[%s], sql[%s]\n", result,errmsg,sql);
+//		goto Write_Err;
+//	}
 
 Write_Err:
     logClose(db);
@@ -169,10 +175,12 @@ int logRequest(time_t s, time_t e, logType typ,
 
     if (NULL == (table = logSelect(s, e, typ, sgnfcc, &nrow, &ncol)))
     {
+        nrow = 0;
         goto logRequestExit;
     }
-
-	for(i = 1 + start, element = 0; (i < nrow+1) && (element < elementMax); i++, element++) 
+    
+//    printf("nrow = %d\n", nrow);
+	for(i = 1 + start, element = 0; (i <= nrow) && (element < elementMax); i++, element++) 
 	{
 //	    printf("%-10s    %-3s    %-3s    %-40s\n", 
 //            table[i*ncol+0], table[i*ncol+1], table[i*ncol+2], table[i*ncol+3]);
@@ -181,9 +189,6 @@ int logRequest(time_t s, time_t e, logType typ,
         pElements[element].sgnfcc = (logSignificance)atoi(table[i*ncol+2]);
         strncpy(pElements[element].content, table[i*ncol+3], LOG_BUF_LEN_MAX);
 	}
-
-    if(nrow > 0)
-        nrow--;
 
 logRequestExit:
     if (table)

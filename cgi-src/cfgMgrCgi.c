@@ -168,15 +168,23 @@ static int netParamGet(netParam *net, int netNumber)
         return -1;
     }
     
-    if (!net->isDhcp)
-    {
+//    if (!net->isDhcp)
+//    {
         stringLenZeroChkReturn(Lan_IP);
         stringLenZeroChkReturn(Lan_Mask);
         stringLenZeroChkReturn(Lan_GateWay);        
         inet_pton(AF_INET, Lan_IP, (void*)&net->ip);
         inet_pton(AF_INET, Lan_Mask, (void*)&net->mask);
         inet_pton(AF_INET, Lan_GateWay, (void*)&net->gateway);
-    }    
+//    }
+
+    CGIDEBUGINFOHEADER;
+    CGIDEBUGINFO("Lan_Auto                      : %s\n",Lan_Auto);
+    CGIDEBUGINFO("Lan_IP                        : %s\n",Lan_IP);
+    CGIDEBUGINFO("Lan_Mask                      : %s\n",Lan_Mask);
+    CGIDEBUGINFO("Lan_GateWay                   : %s\n",Lan_GateWay);
+    CGIDEBUGINFO("Lan_Mac                       : %s\n",Lan_Mac);
+    CGIDEBUGINFOBOUNDARY;
 
     if(0 != macString2Hex(Lan_Mac, net->mac))
     {
@@ -585,6 +593,9 @@ static int adminPasswdConfirm(msg *m)
 static int factoryReset(msg *m)
 {
     m->type = MSGTYPE_FACTORYRESET_REQUEST;
+
+    CGIDEBUGINFOHEADER;
+    CGIDEBUGINFOBOUNDARY;
     
     return 0;
 }
@@ -592,6 +603,9 @@ static int factoryReset(msg *m)
 static int reboot(msg *m)
 {
     m->type = MSGTYPE_REBOOT_REQUEST;
+
+    CGIDEBUGINFOHEADER;
+    CGIDEBUGINFOBOUNDARY;
     
     return 0;
 }
@@ -748,9 +762,9 @@ static int updateFile(msg *m)
 	char name[1024];
 	char path[50]={0};
 	char contentType[1024];
+    char tmp[4096];
 	int size;
 	int got;
-	char *tmp = NULL;
     cgiFormResultType ret;
         
 	if ((ret = cgiFormFileName("UpdateFileName", name, sizeof(name))) != cgiFormSuccess)
@@ -760,15 +774,13 @@ static int updateFile(msg *m)
 	}        
 	cgiFormFileSize("UpdateFileName", &size);    
 	cgiFormFileContentType("UpdateFileName", contentType, sizeof(contentType));
-    CGIDEBUGINFO("UpdateFileName : %s\r\nsize : %d\tr\ncontentType : %s.\n", name, size, contentType);
+    CGIDEBUGINFO("UpdateFileName : %s\r\nsize : %d\r\ncontentType : %s.\n", name, size, contentType);
 	if ((ret = cgiFormFileOpen("UpdateFileName", &file)) != cgiFormSuccess)
     {
         CGIDEBUG("updateLogicFile cgiFormFileOpen updatefile failed(ret = %d)!!\n", ret);
 		return -1;
 	}
-	/*write file */
-	
-	tmp=(char *)malloc(sizeof(char)*size);
+	/*write file */	
 	strcpy(path , "/tmp/");
 	strcat(path, name);  
 	fd=fopen(path ,"w+");
@@ -777,12 +789,11 @@ static int updateFile(msg *m)
         CGIDEBUG("updateLogicFile fopen %s failed!!\n", path);
 		return -1;
 	}
-	while (cgiFormFileRead(file, tmp, size, &got) == cgiFormSuccess)
+	while (cgiFormFileRead(file, tmp, sizeof(tmp), &got) == cgiFormSuccess)
 	{
-		fwrite(tmp, size, sizeof(char), fd);
+		fwrite(tmp, got, sizeof(char), fd);
 	}
 	cgiFormFileClose(file);
-	free(tmp);
 	fclose(fd);
 	return 0;
 }
@@ -892,6 +903,7 @@ static void fileLookUpResp2json(msg *m)
     char buffer[50];
 //    struct hostent *hent;
     fileLookUpResponse *resp = (fileLookUpResponse *)m->data;
+    char month[7] = {0};
 //    in_addr_t hostAddr;
 
     cgiHeaderContentType("text/html");
@@ -907,10 +919,12 @@ static void fileLookUpResp2json(msg *m)
         time2format(resp->elements[i].modifyTime, buffer);
         fprintf(cgiOut, "\"modifyTime\":\"%s\",\r\n", buffer);
         fprintf(cgiOut, "\"sizeMB\":\"%d\",\r\n", resp->elements[i].sizeMB);
-        gethostname(buffer, sizeof(buffer));
+//        gethostname(buffer, sizeof(buffer));
 //        hostAddr = getNetIp(NET1_NAME);
 //        inet_ntop(AF_INET, (void *)&hostAddr, buffer, 50);
-        fprintf(cgiOut, "\"url\":\"/NetFiles/%s\"}\r\n", resp->elements[i].fileName);
+        fprintf(cgiOut, "\"url\":\"/NetFiles/%s\",\r\n", resp->elements[i].fileName);
+        memcpy(month, resp->elements[i].fileName, 6);
+        fprintf(cgiOut, "\"month\":\"%s\"}\r\n", month);
         if (i != (resp->length - 1))
             fprintf(cgiOut, ",");
     }
