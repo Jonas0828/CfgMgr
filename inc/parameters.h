@@ -22,15 +22,18 @@
 
 #define USR_KEY_LNE_MAX        20
 
-typedef enum
-{
-    FALSE = 0,
-    TRUE
-}BOOL;
+#ifndef FALSE
+#define FALSE  0
+#endif
+
+#ifndef TRUE
+#define TRUE  1
+#endif
+
 
 typedef struct
 {
-    BOOL             isDhcp;
+    int             isDhcp;
     in_addr_t        ip;
     in_addr_t        mask;
     in_addr_t        gateway;
@@ -39,14 +42,14 @@ typedef struct
 
 typedef struct
 {
-    BOOL             isCapture;
-    BOOL             isAutoUpLoad;
+    int             isCapture;
+    int             isAutoUpLoad;
     char             autoUpLoadPath[255];
 }captureParam;
 
 typedef struct
 {
-    BOOL             isFilter;
+    int             isFilter;
 }filterParam;
 
 typedef struct

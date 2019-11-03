@@ -20,7 +20,7 @@
 #define HOST_ZHANG                       2
 #define HOST_LOONGSON                    3
 
-#define HOST                             HOST_ZHANG
+#define HOST                             HOST_LOONGSON
 //#define HOST                             HOST_CX
 
 #define ADMIN_USER_NUM                   1
@@ -30,18 +30,22 @@
 
 #if (HOST == HOST_CX)
 #define NET1_NAME                        "enp0s31f6"
+#define NET2_NAME                        "null"
 #elif (HOST == HOST_ZHANG)
 #define NET1_NAME                        "wlo1"
+#define NET2_NAME                        "null"
+#elif (HOST == HOST_LOONGSON)
+#define NET1_NAME                        "eth0"
+#define NET2_NAME                        "eth1"
 #else
 #error "host config error !!!"
 #endif
-#define NET2_NAME                        "null"
 
-#define FILE_NAME_LEN_MAX                30
+#define FILE_NAME_LEN_MAX                60
 
 #define LOG_BUF_LEN_MAX                  FILE_NAME_LEN_MAX
 
-#define PAGE_RECORDS_MAX                 100
+#define PAGE_RECORDS_MAX                 50
 
 #define NET_FILES_PATH                   "../NetFiles/"
 

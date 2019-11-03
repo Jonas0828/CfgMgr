@@ -16,14 +16,23 @@
 #ifndef __MESSAGE_H__
 #define __MESSAGE_H__
 
+#include <config.h>
 #include <mqueue.h>
 #include <parameters.h>
 #include <trace.h>
-#include <config.h>
+
 
 #define MSG_DATA_LEN_MAX        4096
 
 #define CGI_CFGMGR_MSG_NAME     "/cgiCfgMgrMessage"
+#define CFGMGR_DUMPCAP_MSG0_NAME "/cfgmgrDumpcapMessage0"
+#define CFGMGR_DUMPCAP_MSG1_NAME "/cfgmgrDumpcapMessage1"
+
+
+//typedef enum
+//{
+//}cfgmgrDumpcapMsgType;
+
 
 typedef enum
 {
@@ -64,7 +73,7 @@ typedef enum
     MSGTYPE_SYSTIMEGET_RESPONSE,
     MSGTYPE_GETVERSION_RESPONSE,
     MSGTYPE_LOGLOOKUP_RESPONSE,
-    MSGTYPE_LOGEXPORT_RESPONSE
+    MSGTYPE_LOGEXPORT_RESPONSE,
 }msgType;
 
 typedef enum
@@ -103,7 +112,7 @@ typedef struct
 
 typedef struct
 {
-    char fileName[FILE_NAME_LEN_MAX];
+    char fileName[FILE_NAME_LEN_MAX + 1];
     time_t modifyTime;
     int sizeMB;
 }fileElement;

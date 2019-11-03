@@ -38,6 +38,7 @@
 #include <mxml.h>
 #include <version.h>
 #include <share.h>
+//#include <cfgmgrDumpcapMessage.h>
 
 #define ETHER_ADDR_LEN    6
 #define UP    1
@@ -57,6 +58,9 @@
 pthread_t webThreadId = -1;
 
 static param pa;
+static msgID cfgmgrDumpcapMsgId0;
+static msgID cfgmgrDumpcapMsgId1;
+
 
 static cfgMgrStatus paramLoad(param *p)
 {
@@ -524,7 +528,7 @@ Error:
 }
 
 
-static BOOL is_netipvalid( in_addr_t IP )
+static int is_netipvalid( in_addr_t IP )
 {
 	int i;
 	struct in_addr addr;
@@ -674,6 +678,88 @@ int get_mac_addr(char *ifname, char *mac)
     return rtn;
 }
 
+int
+ether_atoe(const char *a, unsigned char *e)
+{
+    char *c = (char *) a;
+    int i = 0;
+
+    memset(e, 0, ETHER_ADDR_LEN);
+    for (;;) {
+        e[i++] = (unsigned char) strtoul(c, &c, 16);
+        if (!*c++ || i == ETHER_ADDR_LEN)
+            break;
+    }
+    return (i == ETHER_ADDR_LEN);
+}
+
+char *
+ether_etoa(const unsigned char *e, char *a)
+{
+    char *c = a;
+    int i;
+
+    for (i = 0; i < ETHER_ADDR_LEN; i++) {
+        if (i)
+            *c++ = ':';
+        c += sprintf(c, "%02X", e[i] & 0xff);
+    }
+    return a;
+}
+
+
+int if_updown(char *ifname, int flag)
+{
+    int fd, rtn;
+    struct ifreq ifr;
+
+    if (!ifname) {
+        return -1;
+    }
+
+    fd = socket(AF_INET, SOCK_DGRAM, 0 );
+    if ( fd < 0 ) {
+        perror("socket");
+        return -1;
+    }
+    
+    ifr.ifr_addr.sa_family = AF_INET;
+    strncpy(ifr.ifr_name, (const char *)ifname, IFNAMSIZ - 1 );
+
+    if ( (rtn = ioctl(fd, SIOCGIFFLAGS, &ifr) ) == 0 ) {
+        if ( flag == DOWN )
+            ifr.ifr_flags &= ~IFF_UP;
+        else if ( flag == UP ) 
+            ifr.ifr_flags |= IFF_UP;
+    }
+
+    if ( (rtn = ioctl(fd, SIOCSIFFLAGS, &ifr) ) != 0) {
+        perror("SIOCSIFFLAGS");
+    }
+
+    if (flag == UP)
+    {
+        struct ethtool_value edata; 
+	
+    	edata.cmd = ETHTOOL_GLINK; 
+    	edata.data = 0; 
+        ifr.ifr_data = (char *) &edata; 
+        
+        do
+        {
+            if(((rtn = ioctl( fd, SIOCETHTOOL, &ifr )) == -1) || (edata.data > 0))
+            {
+                break;
+            }            
+        }while(1);
+    }
+
+    close(fd);
+
+    return rtn;
+}
+
+
 static cfgMgrStatus setMacAddress(int netNumber, unsigned char *mac)
 {
     int fd, rtn;
@@ -702,7 +788,9 @@ static cfgMgrStatus setMacAddress(int netNumber, unsigned char *mac)
     
     if((rtn = ioctl(fd, SIOCSIFHWADDR, &ifr) ) != 0)
     {
-        trace(DEBUG_ERR, SYSTEM, "setMacAddress : Set Mac Address(SIOCSIFHWADDR) error.");
+        trace(DEBUG_ERR, SYSTEM, "setMacAddress : Set Mac Address(SIOCSIFHWADDR) error(%d).", rtn);
+        trace(DEBUG_ERR, SYSTEM, "setMacAddress : Mac %02x %02x %02x %02x %02x %02x.", 
+            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 		return CFGMGR_ERR;
     }
     close(fd);
@@ -712,6 +800,7 @@ static cfgMgrStatus setMacAddress(int netNumber, unsigned char *mac)
 static cfgMgrStatus setNetParameters(netParam *net, int netNumber)
 {
     cfgMgrStatus status = CFGMGR_OK;
+    char buffer[100];
     
     /** set ip */
 #if 0
@@ -752,84 +841,28 @@ static cfgMgrStatus setNetParameters(netParam *net, int netNumber)
         trace(DEBUG_ERR, USER, "net%d setNetParameters : set gateway failed !!!", netNumber);
         return status;
     }
-    /** set mac */
-    if(CFGMGR_OK != (status = setMacAddress(netNumber, net->mac)))
+    get_mac_addr(netNumber == 1 ? NET1_NAME : NET2_NAME, buffer);
+    if (memcmp(buffer, net->mac, 6) != 0)
     {
-        trace(DEBUG_ERR, USER, "net%d setNetParameters : set mac address failed !!!", netNumber);
-        return status;
+        if_updown(netNumber == 1 ? NET1_NAME : NET2_NAME, DOWN);
+        /** set mac */
+        if(CFGMGR_OK != (status = setMacAddress(netNumber, net->mac)))
+        {
+            trace(DEBUG_ERR, USER, "net%d setNetParameters : set mac address failed !!!", netNumber);
+            return status;
+        }
+        if_updown(netNumber == 1 ? NET1_NAME : NET2_NAME, UP);
     }
 #endif
 
     return status;
 }
 
-int if_updown(char *ifname, int flag)
-{
-    int fd, rtn;
-    struct ifreq ifr;        
-
-    if (!ifname) {
-        return -1;
-    }
-
-    fd = socket(AF_INET, SOCK_DGRAM, 0 );
-    if ( fd < 0 ) {
-        perror("socket");
-        return -1;
-    }
-    
-    ifr.ifr_addr.sa_family = AF_INET;
-    strncpy(ifr.ifr_name, (const char *)ifname, IFNAMSIZ - 1 );
-
-    if ( (rtn = ioctl(fd, SIOCGIFFLAGS, &ifr) ) == 0 ) {
-        if ( flag == DOWN )
-            ifr.ifr_flags &= ~IFF_UP;
-        else if ( flag == UP ) 
-            ifr.ifr_flags |= IFF_UP;
-        
-    }
-
-    if ( (rtn = ioctl(fd, SIOCSIFFLAGS, &ifr) ) != 0) {
-        perror("SIOCSIFFLAGS");
-    }
-
-    close(fd);
-
-    return rtn;
-}
-
-int
-ether_atoe(const char *a, unsigned char *e)
-{
-    char *c = (char *) a;
-    int i = 0;
-
-    memset(e, 0, ETHER_ADDR_LEN);
-    for (;;) {
-        e[i++] = (unsigned char) strtoul(c, &c, 16);
-        if (!*c++ || i == ETHER_ADDR_LEN)
-            break;
-    }
-    return (i == ETHER_ADDR_LEN);
-}
-
-char *
-ether_etoa(const unsigned char *e, char *a)
-{
-    char *c = a;
-    int i;
-
-    for (i = 0; i < ETHER_ADDR_LEN; i++) {
-        if (i)
-            *c++ = ':';
-        c += sprintf(c, "%02X", e[i] & 0xff);
-    }
-    return a;
-}
-
 static void genConfirmMsg(cfgMgrStatus status, msg *m)
 {
     confirmResponse *resp = (confirmResponse *)m->data;
+
+    memset(m, 0, sizeof(msg));
     
     m->type = MSGTYPE_COMFIRM;
     resp->status = status;
@@ -884,11 +917,11 @@ static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
     trace(DEBUG_INFO, USER, "Lan %d test start", netNumber);
 //#if 0
     /** set net parameters */
-//    if(CFGMGR_OK != (status = setNetParameters(net, netNumber)))
-//    {
-//        trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!", netNumber);
-//        goto doLanTestExit;
-//    }
+    if(CFGMGR_OK != (status = setNetParameters(net, netNumber)))
+    {
+        trace(DEBUG_ERR, USER, "Lan %d test : setNetParameters failed !!!", netNumber);
+        goto doLanTestExit;
+    }
      
     /** lan test */
     if (0 != pingTest(req->destIp))
@@ -900,19 +933,19 @@ static cfgMgrStatus doLanTest (msg* in, msg *out, int netNumber)
     }
 
 	/** net parameter set bak */
-//    if (netNumber == 1)
-//        netOrigin = &pa.lan1.net;
-//    else
-//        netOrigin = &pa.lan2.net;
-//    if(CFGMGR_OK != (status = setNetParameters(netOrigin, netNumber)))
-//    {
-//        trace(DEBUG_ERR, "Lan %d test : setNetParameters failed !!!", netNumber);
-//        goto doLanTestExit;
-//    }
+    if (netNumber == 1)
+        netOrigin = &pa.lan1.net;
+    else
+        netOrigin = &pa.lan2.net;
+    if(CFGMGR_OK != (status = setNetParameters(netOrigin, netNumber)))
+    {
+        trace(DEBUG_ERR, USER, "Lan %d test : setNetParameters failed !!!", netNumber);
+        goto doLanTestExit;
+    }
 //#endif    
     trace(DEBUG_INFO, USER, "Lan %d test OK", netNumber);
     
-//doLanTestExit:
+doLanTestExit:
 
     genConfirmMsg(status, out);
     
@@ -926,20 +959,20 @@ static cfgMgrStatus doNetConfigSave (msg* in, msg *out)
 
     trace(DEBUG_INFO, USER, "Net config start");
 
-//    if(CFGMGR_OK != (status = setNetParameters(net, 1)))
-//    {
-//        trace(DEBUG_ERR, "net 1 setNetParameters failed.");
-//        goto doNetConfigSaveExit;
-//    }
+    if(CFGMGR_OK != (status = setNetParameters(net, 1)))
+    {
+        trace(DEBUG_ERR, USER, "net 1 setNetParameters failed.");
+        goto doNetConfigSaveExit;
+    }
     
     memcpy (&pa.lan1.net, net, sizeof(netParam));
 
     net++;    
-//    if(CFGMGR_OK != (status = setNetParameters(net, 2)))
-//    {
-//        trace(DEBUG_ERR, "net 2 setNetParameters failed.");
-//        goto doNetConfigSaveExit;
-//    }
+    if(CFGMGR_OK != (status = setNetParameters(net, 2)))
+    {
+        trace(DEBUG_ERR, USER, "net 2 setNetParameters failed.");
+        goto doNetConfigSaveExit;
+    }
     
     memcpy (&pa.lan2.net, net, sizeof(netParam));
 
@@ -1052,15 +1085,35 @@ static cfgMgrStatus doFileLookUp(msg *in, msg *out)
     cfgMgrStatus status = CFGMGR_OK;
     fileLookUpRequest *req = (fileLookUpRequest *)in->data;
     fileLookUpResponse * resp = (fileLookUpResponse *)out->data;
-    int recordsTotal, i;
+    int recordsTotal, i, len;
+    msgID mId;
+    msg *sendMsg = in, *recvMsg = out;
 
     trace(DEBUG_INFO, USER, "File Look Up start");
 
     memset(out, 0, sizeof(msg));
 
     /** file look up */
-#if 0
-    /** TODO */
+#if 1
+    if (req->netNumber == 1)
+    {
+        mId = cfgmgrDumpcapMsgId0;
+    }
+    else
+    {
+        mId = cfgmgrDumpcapMsgId1;
+    }
+    
+    if(-1 == msgSend(mId, sendMsg))
+    {
+        trace(DEBUG_ERR, SYSTEM, "msgSend failed !!!");
+        goto doNetFilterExit;
+    }
+    if((len = msgRecv(mId, recvMsg)) <= 0)
+    {
+        trace(DEBUG_ERR, SYSTEM, "msgRecv %s error !!!", req->netNumber == 1 ? CFGMGR_DUMPCAP_MSG0_NAME : CFGMGR_DUMPCAP_MSG1_NAME);
+        goto doNetFilterExit;
+    }
 #else
 {
     time_t ti;
@@ -1083,7 +1136,7 @@ static cfgMgrStatus doFileLookUp(msg *in, msg *out)
 
     trace(DEBUG_INFO, USER, "File Look Up succ");
 
-//doNetFilterExit:
+doNetFilterExit:
 
     return status;
 }
@@ -1532,21 +1585,23 @@ static cfgMgrStatus doUpdateWeb(msg *in, msg *out)
 
 static void webProcess (void)
 {
-    int len;
+    int len, netNumber;
     msgID mId;
     msg recvMsg, sendMsg;
     cfgMgrStatus status = CFGMGR_OK;
+    netParam *net;
     
     /** set process name */
     prctl(PR_SET_NAME, WEB_THREAD_NAME);
 
     /** open message */
-    mq_unlink(CGI_CFGMGR_MSG_NAME);
+//    mq_unlink(CGI_CFGMGR_MSG_NAME);
     if((msgID)-1 == (mId = msgOpen(CGI_CFGMGR_MSG_NAME)))
     {
         trace(DEBUG_ERR, SYSTEM, "msgOpen %s error !!!", CGI_CFGMGR_MSG_NAME);
         return;
-    }
+    }    
+    
 
     /** load parameters */
     if(CFGMGR_OK != (status = paramLoad(&pa)))
@@ -1555,18 +1610,18 @@ static void webProcess (void)
         goto webProcessExit;
     }
     /** set net parameters */
-//    for(netNumber = 1; netNumber <= 2; netNumber++)
-//    {
-//        if (netNumber == 1)
-//            net = &pa.lan1.net;
-//        else
-//            net = &pa.lan2.net;
-//        if(CFGMGR_OK != (status = setNetParameters(net, netNumber)))
-//        {
-//            trace(DEBUG_ERR, "webProcess setNetParameters net%d failed!!!", netNumber);
-//            goto webProcessExit;
-//        }
-//    }
+    for(netNumber = 1; netNumber <= 2; netNumber++)
+    {
+        if (netNumber == 1)
+            net = &pa.lan1.net;
+        else
+            net = &pa.lan2.net;
+        if(CFGMGR_OK != (status = setNetParameters(net, netNumber)))
+        {
+            trace(DEBUG_ERR, SYSTEM, "webProcess setNetParameters net%d failed!!!", netNumber);
+            goto webProcessExit;
+        }
+    }
 
     while(1)
     {
@@ -1576,7 +1631,7 @@ static void webProcess (void)
             break;
         }
 
-//        trace(DEBUG_INFO, "msgRecv a message, type %d.", recvMsg.type);
+        trace(DEBUG_INFO, SYSTEM, "msgRecv a message, type %d.", recvMsg.type);
 
         switch(recvMsg.type)
         {
@@ -1660,7 +1715,7 @@ static void webProcess (void)
                 break;
             
             default:
-                trace(DEBUG_ERR, USER, "Operation not support!!!");
+                trace(DEBUG_ERR, USER, "Operation not support!!!, msgtype[%d]", recvMsg.type);
                 status = CFGMGR_NOT_SUPPORT;
                 genConfirmMsg(status, &sendMsg);
                 break;
@@ -1682,6 +1737,20 @@ int webInit (void)
 {
 	int ret;
 	pthread_attr_t attr;
+
+    mq_unlink(CFGMGR_DUMPCAP_MSG0_NAME);
+    if((msgID)-1 == (cfgmgrDumpcapMsgId0 = msgOpen(CFGMGR_DUMPCAP_MSG0_NAME)))
+    {
+        trace(DEBUG_ERR, SYSTEM, "msgOpen %s error !!!", CFGMGR_DUMPCAP_MSG0_NAME);
+        return -1;
+    }
+    mq_unlink(CFGMGR_DUMPCAP_MSG1_NAME);
+    if((msgID)-1 == (cfgmgrDumpcapMsgId1 = msgOpen(CFGMGR_DUMPCAP_MSG1_NAME)))
+    {
+        trace(DEBUG_ERR, SYSTEM, "msgOpen %s error !!!", CFGMGR_DUMPCAP_MSG1_NAME);
+        return -1;
+    }
+    
 	
 	ret = pthread_attr_init(&attr);
 	assert(ret == 0);

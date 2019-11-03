@@ -19,6 +19,7 @@ cfgMgrCgi.cgi: cfgMgrCgi.c libcgic.a
 	$(CC) $(CFLAGS) $(INC) cfgMgrCgi.c -o cfgMgrCgi.cgi $(LIB)	
 	cp cfgMgrCgi.cgi /home/chenxu/LOONGSON-2k1000/src/web/cgi-bin/
 	cp cfgMgrCgi.cgi ../../webDebugWithZhang/
+	cp cfgMgrCgi.cgi /home/chenxu/mount/tftproot
 	rm -vf *.o
 	rm -vf capture
 

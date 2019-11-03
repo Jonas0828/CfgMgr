@@ -258,6 +258,7 @@ void trace(int logLevel, int typ, const char *fmt, ...)
     va_list ap;
     logSignificance sgnfcc;
 
+
     va_start(ap, fmt);
     vsnprintf(lastCfgMgrErr, LOG_BUF_LEN_MAX, fmt, ap);
     va_end(ap);

@@ -121,6 +121,12 @@ static int login (msg *m)
         return -1;
     }
     strncpy(lg->passwd, Passwd, sizeof(lg->passwd));    
+
+    CGIDEBUGINFO("------------------------------\n");
+    CGIDEBUGINFO("functionName                : %s\n",functionName);
+    CGIDEBUGINFO("UserName                    : %s\n", UserName);
+    CGIDEBUGINFO("Passwd                      : %s\n", Passwd);
+    CGIDEBUGINFO("------------------------------\n");
     
     return 0;
 }
@@ -1108,6 +1114,10 @@ static void msg2json(msg *m)
             break;
         
         default:
+            CGIDEBUGINFO("------------------------------\n");
+            CGIDEBUGINFO("functionName                : %s\n",functionName);
+            CGIDEBUGINFO("INVALID RESPONSE            : %d\n", m->type);
+            CGIDEBUGINFO("------------------------------\n");
             break;
     }
 }
